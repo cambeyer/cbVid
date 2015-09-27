@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+	<head>
+	<title>cbVid</title>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lato">
+	<link rel="stylesheet" href="//releases.flowplayer.org/6.0.3/skin/functional.css">
+	<script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
+	<script src="//releases.flowplayer.org/6.0.3/flowplayer.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular-animate.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular-cookies.js"></script>
+	<script src="./socket.io/socket.io.js"></script>
+	<script src="./crypto/jsrp-browser.js"></script>
+	<script src="//crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js"></script>
+	<script src="//crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/aes.js"></script>
+	<script src="controllers.js"></script>
+	<script src="directives.js"></script>
+	<style type="text/css">
+		body { font-family: 'Lato', serif; }
+	</style>
+</head>
+<body ng-app="cbVidApp" style="background-color: #F8F8F8" oncontextmenu="return false;">
+	<div ng-controller="mainController" style="height: 100%" drag-and-drop>
+
+		<div style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; z-index: 9999999; text-align: center" ng-if="!authed">
+			<table width="100%" height="100%" cellspacing="0" cellpadding="0">
+				<tr height="100%">
+					<td width="100%">
+						<loginform></loginform>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<div ng-show="authed" drag-and-drop style="height: 100%">
+			<div style="text-align: center">
+				<button ng-click="logout()">Logout</button>
+				<input type="file" id="file" style="margin: 20px"><button id="upload" ng-click="uploadFile()">Upload</button>
+				<table cellpadding="0" cellspacing="0" border="0" width="100%">
+					<tr>
+						<td align="center">
+							<table ng-if="viewers.length > 0" cellpadding="20" cellspacing="0" border="0" style="border: 1px solid black; margin-top: 20px">
+								<tr>
+									<td>Viewer</td>
+									<td>Action</td>
+								</tr>
+								<tr ng-repeat="user in viewers">
+									<td>
+										<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="loginctrl" type="text"/>
+									</td>
+									<td>
+										<button ng-click="viewers.splice($index, 1)">Remove</button>
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td align="center" style="padding-top: 20px">
+							<button ng-click="viewers.push({username: ''})">Add Viewer</button>
+						</td>
+					</tr>
+				</table>
+				<table ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" cellpadding="20" cellspacing="0" border="0" width="100%">
+					<tr ng-hide="uploading | isEmpty" ng-repeat="(file, details) in uploading">
+						<td align="center">
+							<div style="width: 400px; height: 20px">
+								<progress-bar file="file" percent="details.percent" bartype="uploading"></progress-bar>
+							</div>
+						</td>
+					</tr>
+					<tr ng-hide="processing | isEmpty" ng-repeat="(md5, details) in processing">
+						<td align="center">
+							<div style="width: 400px; height: 20px">
+								<progress-bar percent="details.percent" bartype="processing"></progress-bar>
+							</div>
+						</td>
+					</tr>
+				</table>
+			</div>
+			<table ng-if="!(videoList | isEmpty)" cellpadding="20" cellspacing="0" border="0" width="100%">
+				<tr>
+					<td align="center">
+						<table cellpadding="20" cellspacing="0" border="1">
+							<tr>
+								<td><b>Original File Name</b></td>
+								<td><b>Delete</b></td>
+							</tr>
+							<tr ng-repeat="video in videoList | orderBy: 'details.original'" ng-class="{'activevideo': video.filename == activeVideo.filename}">
+								<td ng-bind="video.details.original" ng-click="setVideo(video.filename)"></td>
+								<td ng-if="video.edit" ng-click="deleteVideo(video.filename)">Delete</td>
+								<td ng-if="!video.edit" ng-click="removeMe(video.filename)">Remove</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+			<div style="padding: 20px; text-align: center">
+				<div class="player"></div>
+			</div>
+		</div>
+
+	</div>
+</body>
+</html>
