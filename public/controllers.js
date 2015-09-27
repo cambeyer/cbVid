@@ -286,7 +286,7 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 				for (var i = 0; i < videoList.view.length; i++) {
 					videoList.view[i].edit = false;
 				}
-				$scope.videoList = $.extend([], videoList.edit, videoList.view);
+				$scope.videoList = [].concat(videoList.edit).concat(videoList.view);
 				var found = false;
 				for (var i = 0; i < $scope.videoList.length; i++) {
 					if ($scope.videoList[i].filename == $scope.activeVideo.filename) {
