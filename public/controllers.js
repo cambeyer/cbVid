@@ -290,10 +290,10 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 		});
 	});
 
-	$scope.socket.on('torrent', function (msg) {
+	$scope.socket.on('torrent', function (md5) {
 		$scope.$apply(function () {
-			$scope.processing[msg.md5] = {};
-			$scope.processing[msg.md5].percent = 0;
+			$scope.processing[md5] = {};
+			$scope.processing[md5].percent = 0;
 			$scope.sendSubscriptions();
 		});
 	});

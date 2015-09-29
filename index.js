@@ -504,6 +504,7 @@ io.on('connection', function (socket) {
 					}
 
 					sessionVars.ddate = Date.now();
+					socket.emit('torrent', sessionVars.md5);
 					transcode(largestFile.createReadStream(), sessionVars);
 				}
 			});
