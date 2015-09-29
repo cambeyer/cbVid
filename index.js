@@ -492,6 +492,7 @@ io.on('connection', function (socket) {
 
 					var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
 					md5 = md5.split(":")[md5.split(":").length - 1];
+					md5 = crypto.createHash('md5').update(md5).digest('hex');
 					sessionVars.md5 = md5 ? md5 : "torrented";
 
 					var num = 0;
