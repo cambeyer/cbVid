@@ -479,44 +479,46 @@ io.on('connection', function (socket) {
 	socket.on('torrent', function(sessionVars) {
 		sessionVars.torrentLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.torrentLink);
 		if (sessionVars.torrentLink) {
-			var engine = torrentStream(sessionVars.torrentLink, {
-				verify: true,
-				dht: true,
-				tmp: dir
-			});
-			engine.on('ready', function() {
-				if (engine.files.length > 0) {
-					var largestFile = engine.files[0];
-					for (var i = 1; i < engine.files.length; i++) {
-						if (engine.files[i].length > largestFile.length) {
-							largestFile = engine.files[i];
+			try {
+				var engine = torrentStream(sessionVars.torrentLink, {
+					verify: true,
+					dht: true,
+					tmp: dir
+				});
+				engine.on('ready', function() {
+					if (engine.files.length > 0) {
+						var largestFile = engine.files[0];
+						for (var i = 1; i < engine.files.length; i++) {
+							if (engine.files[i].length > largestFile.length) {
+								largestFile = engine.files[i];
+							}
 						}
-					}
-					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-					sessionVars.name = largestFile.name;
-
-					var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
-					md5 = md5.split(":")[md5.split(":").length - 1];
-					md5 = crypto.createHash('md5').update(md5).digest('hex');
-					sessionVars.md5 = md5 ? md5 : "torrented";
-
-					var num = 0;
-					var exists = true;
-					while (exists) {
-						try {
-							fs.statSync(dir + sessionVars.md5 + num);
-							num = num + 1;
-						} catch (e) {
-							sessionVars.md5 = sessionVars.md5 + num;
-							exists = false;
+						console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+						sessionVars.name = largestFile.name;
+	
+						var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
+						md5 = md5.split(":")[md5.split(":").length - 1];
+						md5 = crypto.createHash('md5').update(md5).digest('hex');
+						sessionVars.md5 = md5 ? md5 : "torrented";
+	
+						var num = 0;
+						var exists = true;
+						while (exists) {
+							try {
+								fs.statSync(dir + sessionVars.md5 + num);
+								num = num + 1;
+							} catch (e) {
+								sessionVars.md5 = sessionVars.md5 + num;
+								exists = false;
+							}
 						}
+	
+						sessionVars.ddate = Date.now();
+						socket.emit('torrent', sessionVars.md5);
+						transcode(largestFile.createReadStream(), sessionVars);
 					}
-
-					sessionVars.ddate = Date.now();
-					socket.emit('torrent', sessionVars.md5);
-					transcode(largestFile.createReadStream(), sessionVars);
-				}
-			});
+				});
+			} catch (e) { }
 		}
 	});
 });
