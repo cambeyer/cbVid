@@ -282,7 +282,7 @@ directive('uploadForm', function ($rootScope) {
             file: '='
         },
 		template: '' +
-			'<p ng-if="file" ng-bind="file | limitTo: 50" style="white-space: nowrap"></p><p ng-if="!file"><b>Processing</b></p><div ng-if="percent" ng-style="{\'width\': width + \'px\'}" style="height: 100%; background-color: gray; float: left"><div ng-class="{\'uploading\': bartype == \'uploading\', \'processing\': bartype == \'processing\'}" ng-style="{\'width\': percent + \'%\'}" style="height: 100%; float: left">&nbsp</div></div><div style="float: right; width: 50px; text-align: right">{{percent}}%</div><div ng-if="!percent">Seconds processed: {{timestamp}}</div>',
+			'<p ng-bind="file | limitTo: 50" style="white-space: nowrap"></p><div ng-if="percent" ng-style="{\'width\': width + \'px\'}" style="height: 100%; background-color: gray; float: left"><div ng-class="{\'uploading\': bartype == \'uploading\', \'processing\': bartype == \'processing\'}" ng-style="{\'width\': percent + \'%\'}" style="height: 100%; float: left">&nbsp</div></div><div style="float: right; width: 50px; text-align: right">{{percent}}%</div><div ng-if="!percent && timestamp">Seconds processed: {{timestamp}}</div>',
 		link: function (scope, element, attrs) {
 			scope.width = element.parent()[0].offsetWidth - 50;
 		}

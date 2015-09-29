@@ -286,6 +286,9 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 			}
 			var timestamp = Math.floor(msg.timestamp).toFixed(0);
 			$scope.processing[msg.md5].timestamp = timestamp;
+			if (!$scope.processing[msg.md5].name) {
+				$scope.processing[msg.md5].name = msg.name;
+			}
 			if (percent >= 100) {
 				try {
 					delete $scope.processing[msg.md5];
