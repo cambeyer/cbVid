@@ -5,6 +5,7 @@ var path = require('path');
 var fs = require('fs-extra');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var torrentStream = require('torrent-stream');
 var crypto = require('crypto');
 var node_cryptojs = require('node-cryptojs-aes');
 var CryptoJS = node_cryptojs.CryptoJS;
@@ -54,18 +55,17 @@ var getFiles = function (dir, files_) {
 
 app.route('/upload').post(function (req, res, next) {
 	var hash = crypto.createHash('md5');
-	var md5;
 	var sessionVars = {};
-	var date;
 	req.busboy.on('field', function (fieldname, val) {
 		sessionVars[fieldname] = val;
 		if (sessionVars.username && sessionVars.session && sessionVars.date) {
-			date = decrypt(sessionVars.username, sessionVars.session, sessionVars.date);
+			sessionVars.ddate = decrypt(sessionVars.username, sessionVars.session, sessionVars.date);
 		}
 	});
 	req.busboy.on('file', function (fieldname, stream, name) {
 		console.log("Uploading file: " + name);
 		var filename = dir + path.basename(name);
+		sessionVars.name = name;
 		var num = 0;
 		var exists = true;
 		while (exists) {
@@ -82,82 +82,22 @@ app.route('/upload').post(function (req, res, next) {
 			hash.update(chunk);
 		});
 		fstream.on('close', function () {
-			md5 = hash.digest('hex');
+			sessionVars.md5 = hash.digest('hex');
 			var num = 0;
 			var exists = true;
 			while (exists) {
 				try {
-					fs.statSync(dir + md5 + num);
+					fs.statSync(dir + sessionVars.md5 + num);
 					num = num + 1;
 				} catch (e) {
-					md5 = md5 + num;
+					sessionVars.md5 = sessionVars.md5 + num;
 					exists = false;
 				}
 			}
 			res.writeHead(200, { Connection: 'close' });
-      		res.end(md5);
+      		res.end(sessionVars.md5);
 
-			ffmpeg(filename)
-				.videoBitrate('1024k')
-				.videoCodec('libx264')
-				.fps(30)
-				.audioBitrate('128k')
-				.audioCodec('aac')
-				.audioChannels(2)
-				.format('mp4')
-				.outputOption('-pix_fmt yuv420p')
-				.outputOption('-movflags faststart')
-				.outputOption('-analyzeduration 2147483647')
-				.outputOption('-probesize 2147483647')
-				.on('start', function (cmdline) {
-					console.log("File uploaded; beginning transcode");
-				})
-				.on('progress', function (progress) {
-					if (processing[md5]) {
-						processing[md5].emit('progress', { md5: md5, percent: progress.percent });
-					} else if (progress.percent > 50) {
-						console.log("Transcoding without a client listener (>50%)");
-					}
-					//console.log('Transcoding: ' + progress.percent + '% done');
-				})
-				.on('end', function () {
-					if (processing[md5] && !processing[md5].disconnected) {
-						processing[md5].emit('progress', { md5: md5, percent: 100 });
-						delete processing[md5];
-						console.log('File has been transcoded successfully: ' + md5);
-					} else {
-						done.push(md5);
-						console.log("Completed without an active listener");
-					}
-					if (date) {
-						//username: sessionVars.username
-						var vidDetails = {};
-						vidDetails['filename'] = md5;
-						vidDetails['details'] = { date: date, original: name }; //populate this with title, description, etc.
-						vidDetails['permissions'] = [];
-						vidDetails['permissions'].push({ username: sessionVars.username, isowner: "true" });
-						var viewers = JSON.parse(sessionVars.viewers);
-						for (var i = 0; i < viewers.length; i++) {
-							if (viewers[i].username && viewers[i].username !== sessionVars.username) { //make sure the owner isnt denied permission to edit their own file
-								vidDetails['permissions'].push({ username: viewers[i].username, isowner: "false" });
-							}
-						}
-						db.videos.insert(vidDetails, function (err) {
-							if (!err) {
-								fs.unlinkSync(filename); //remove the initially uploaded file... could retain this for auditing purposes
-								for (var i = 0; i < vidDetails.permissions.length; i++) {
-									sendList(vidDetails.permissions[i].username);
-								}
-							} else {
-								console.log("DB insert error");
-							}
-						});
-					}
-				})
-				.on('error', function (err, stdout, stderr) {
-					console.log("Transcoding issue: " + err + stderr);
-				})
-				.save(dir + md5);
+			transcode(filename, sessionVars);
 		});
 		stream.pipe(fstream);
 	});
@@ -166,6 +106,72 @@ app.route('/upload').post(function (req, res, next) {
 	});
 	req.pipe(req.busboy);
 });
+
+var transcode = function (file, sessionVars) {
+	ffmpeg(file)
+		.videoBitrate('1024k')
+		.videoCodec('libx264')
+		.fps(30)
+		.audioBitrate('128k')
+		.audioCodec('aac')
+		.audioChannels(2)
+		.format('mp4')
+		.outputOption('-pix_fmt yuv420p')
+		.outputOption('-movflags faststart')
+		.outputOption('-analyzeduration 2147483647')
+		.outputOption('-probesize 2147483647')
+		.on('start', function (cmdline) {
+			console.log("File uploaded; beginning transcode");
+		})
+		.on('progress', function (progress) {
+			if (processing[sessionVars.md5]) {
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: progress.percent });
+			} else if (progress.percent > 50) {
+				console.log("Transcoding without a client listener (>50%)");
+			}
+			//console.log('Transcoding: ' + progress.percent + '% done');
+		})
+		.on('end', function () {
+			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
+				delete processing[sessionVars.md5];
+				console.log('File has been transcoded successfully: ' + sessionVars.md5);
+			} else {
+				done.push(sessionVars.md5);
+				console.log("Completed without an active listener");
+			}
+			if (sessionVars.ddate) {
+				//username: sessionVars.username
+				var vidDetails = {};
+				vidDetails['filename'] = sessionVars.md5;
+				vidDetails['details'] = { date: sessionVars.ddate, original: sessionVars.name }; //populate this with title, description, etc.
+				vidDetails['permissions'] = [];
+				vidDetails['permissions'].push({ username: sessionVars.username, isowner: "true" });
+				var viewers = JSON.parse(sessionVars.viewers);
+				for (var i = 0; i < viewers.length; i++) {
+					if (viewers[i].username && viewers[i].username !== sessionVars.username) { //make sure the owner isnt denied permission to edit their own file
+						vidDetails['permissions'].push({ username: viewers[i].username, isowner: "false" });
+					}
+				}
+				db.videos.insert(vidDetails, function (err) {
+					if (!err) {
+						try {
+							fs.unlinkSync(file); //remove the initially uploaded file... could retain this for auditing purposes
+						} catch (e) { }
+						for (var i = 0; i < vidDetails.permissions.length; i++) {
+							sendList(vidDetails.permissions[i].username);
+						}
+					} else {
+						console.log("DB insert error");
+					}
+				});
+			}
+		})
+		.on('error', function (err, stdout, stderr) {
+			console.log("Transcoding issue: " + err + stderr);
+		})
+		.save(dir + sessionVars.md5);
+};
 
 app.get('/download', function (req, res){
 	var encryptedName = atob(req.query.file);
@@ -465,6 +471,43 @@ io.on('connection', function (socket) {
 	});
 	socket.on('keepalive', function(pingObj) {
 		verifiers[pingObj.hashed] = pingObj.value;
+	});
+	socket.on('torrent', function(sessionVars) {
+		sessionVars.torrentLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.torrentLink);
+		if (sessionVars.torrentLink) {
+			var engine = torrentStream(sessionVars.torrentLink, {
+				verify: true,
+				dht: true
+			});
+			engine.on('ready', function() {
+				if (engine.files.length > 0) {
+					var largestFile = engine.files[0];
+					for (var i = 1; i < engine.files.length; i++) {
+						if (engine.files[i].length > largestFile.length) {
+							largestFile = engine.files[i];
+						}
+					}
+					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+					sessionVars.name = largestFile.name;
+
+					sessionVars.md5 = "torrented";
+					var num = 0;
+					var exists = true;
+					while (exists) {
+						try {
+							fs.statSync(dir + sessionVars.md5 + num);
+							num = num + 1;
+						} catch (e) {
+							sessionVars.md5 = sessionVars.md5 + num;
+							exists = false;
+						}
+					}
+
+					sessionVars.ddate = Date.now();
+					transcode(largestFile.createReadStream(), sessionVars);
+				}
+			});
+		}
 	});
 });
 

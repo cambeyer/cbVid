@@ -25,6 +25,8 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 
 	$scope.sessionNumber = 0;
 	$scope.videoFile;
+	$scope.torrentLink;
+
 	$scope.encryptedPhrases = {};
 
 	$scope.fields = {
@@ -136,6 +138,17 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 		if (confirm("Do you really want to delete this video?")) {
 			$scope.socket.emit('delete', delReq);
 		}
+	};
+
+	$scope.sendTorrent = function () {
+		var torrentReq = {};
+		torrentReq['username'] = $scope.fields.username;
+		torrentReq['session'] = $scope.sessionNumber;
+		torrentReq['torrentLink'] = $scope.encrypt($scope.torrentLink);
+		torrentReq['viewers'] = JSON.stringify($scope.viewers);
+		$scope.viewers = [];
+		$scope.torrentLink = "";
+		$scope.socket.emit('torrent', torrentReq);
 	};
 
 	$scope.removeMe = function (filename) {
@@ -274,6 +287,14 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 					delete $scope.processing[msg.md5];
 				} catch (e) {}
 			}
+		});
+	});
+
+	$scope.socket.on('torrent', function (msg) {
+		$scope.$apply(function () {
+			$scope.processing[msg.md5] = {};
+			$scope.processing[msg.md5].percent = 0;
+			$scope.sendSubscriptions();
 		});
 	});
 
