@@ -125,7 +125,7 @@ var transcode = function (file, sessionVars) {
 		})
 		.on('progress', function (progress) {
 			if (processing[sessionVars.md5]) {
-				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: progress.percent });
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: progress.percent, timestamp: progress.timemark, name: sessionVars.name });
 			} else if (progress.percent > 50) {
 				console.log("Transcoding without a client listener (>50%)");
 			}

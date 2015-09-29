@@ -75,7 +75,7 @@
 					<tr ng-hide="processing | isEmpty" ng-repeat="(md5, details) in processing">
 						<td align="center">
 							<div style="width: 400px; height: 20px">
-								<progress-bar percent="details.percent" bartype="processing"></progress-bar>
+								<progress-bar percent="details.percent" timestamp="details.percent" bartype="processing"></progress-bar>
 							</div>
 						</td>
 					</tr>
