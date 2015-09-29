@@ -490,7 +490,10 @@ io.on('connection', function (socket) {
 					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
 					sessionVars.name = largestFile.name;
 
-					sessionVars.md5 = "torrented";
+					var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
+					md5 = md5.split(":")[md5.split(":").length - 1];
+					sessionVars.md5 = md5 ? md5 : "torrented";
+
 					var num = 0;
 					var exists = true;
 					while (exists) {
