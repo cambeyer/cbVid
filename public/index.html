@@ -37,30 +37,55 @@
 		<div ng-show="authed" drag-and-drop style="height: 100%">
 			<div style="text-align: center">
 				<button ng-click="logout()">Logout</button>
-				<input type="file" id="file" style="margin: 20px"><button id="upload" ng-click="uploadFile()">Upload</button>
-				<input type="text" ng-model="torrentLink"><button id="torrent" ng-click="sendTorrent()">Torrent</button>
-				<table cellpadding="0" cellspacing="0" border="0" width="100%">
+				<table cellpadding="20" cellspacing="0" border="0" width="100%">
 					<tr>
 						<td align="center">
-							<table ng-if="viewers.length > 0" cellpadding="20" cellspacing="0" border="0" style="border: 1px solid black; margin-top: 20px">
+							<table cellpadding="20" cellspacing="0" border="1">
 								<tr>
-									<td>Viewer</td>
-									<td>Action</td>
+									<td><b>Expected</b></td>
+									<td><b>Input</b></td>
+									<td><b>Action</b></td>
 								</tr>
-								<tr ng-repeat="user in viewers">
-									<td>
-										<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="loginctrl" type="text"/>
-									</td>
-									<td>
-										<button ng-click="viewers.splice($index, 1)">Remove</button>
+								<tr>
+									<td>File:</td>
+									<td><input type="file" id="file"></td>
+									<td><button id="upload" ng-click="uploadFile()">Upload</button></td>
+								</tr>
+								<tr>
+									<td>Magnet Link:</td>
+									<td><input type="text" ng-model="torrentLink" class="loginctrl"></td>
+									<td><button id="torrent" ng-click="sendTorrent()">Torrent</button></td>
+								</tr>
+								<tr>
+									<td colspan="3">
+										<table cellpadding="20" cellspacing="0" border="0" width="100%">
+											<tr ng-if="viewers.length > 0">
+												<td align="center">
+													<table cellpadding="20" cellspacing="0" border="0" style="border: 1px solid black">
+														<tr>
+															<td>Viewer</td>
+															<td>Action</td>
+														</tr>
+														<tr ng-repeat="user in viewers">
+															<td>
+																<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="loginctrl" type="text"/>
+															</td>
+															<td>
+																<button ng-click="viewers.splice($index, 1)">Remove</button>
+															</td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+											<tr>
+												<td align="center">
+													<button ng-click="viewers.push({username: ''})">Add Viewer</button>
+												</td>
+											</tr>
+										</table>
 									</td>
 								</tr>
 							</table>
-						</td>
-					</tr>
-					<tr>
-						<td align="center" style="padding-top: 20px">
-							<button ng-click="viewers.push({username: ''})">Add Viewer</button>
 						</td>
 					</tr>
 				</table>

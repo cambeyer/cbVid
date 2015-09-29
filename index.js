@@ -125,7 +125,11 @@ var transcode = function (file, sessionVars) {
 		})
 		.on('progress', function (progress) {
 			if (processing[sessionVars.md5]) {
-				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: progress.percent, timestamp: progress.timemark, name: sessionVars.name });
+				var resp = { md5: sessionVars.md5, timestamp: progress.timemark, name: sessionVars.name };
+				if (progress.percent) {
+					resp.percent = progress.percent;
+				}
+				processing[sessionVars.md5].emit('progress', resp);
 			} else if (progress.percent > 50) {
 				console.log("Transcoding without a client listener (>50%)");
 			}
@@ -477,7 +481,8 @@ io.on('connection', function (socket) {
 		if (sessionVars.torrentLink) {
 			var engine = torrentStream(sessionVars.torrentLink, {
 				verify: true,
-				dht: true
+				dht: true,
+				tmp: dir
 			});
 			engine.on('ready', function() {
 				if (engine.files.length > 0) {

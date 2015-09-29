@@ -280,8 +280,9 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 
 	$scope.socket.on('progress', function (msg){
 		$scope.$apply(function () {
+			var percent;
 			if (msg.percent) {
-				var percent = Math.floor(msg.percent).toFixed(0);
+				percent = Math.floor(msg.percent).toFixed(0);
 				$scope.processing[msg.md5].percent = percent;
 			}
 			var timestamp = Math.floor(msg.timestamp).toFixed(0);
