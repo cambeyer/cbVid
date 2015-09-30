@@ -54,7 +54,7 @@ html, body {
 }
 
 .activevideo {
-  background-color: yellow;
+  font-weight: bold;
 }
 
 a:link {
@@ -97,7 +97,8 @@ button, .button {
 }
 
 .flowplayer {
-   max-width: 640px;
+   /*max-width: 1024px;*/
+   max-height: 500px;
 }
 
 .hidden {

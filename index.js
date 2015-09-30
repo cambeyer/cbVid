@@ -107,7 +107,7 @@ app.route('/upload').post(function (req, res, next) {
 	req.pipe(req.busboy);
 });
 
-var transcode = function (file, sessionVars) {
+var transcode = function (file, sessionVars, engine) {
 	ffmpeg(file)
 		.videoBitrate('1024k')
 		.videoCodec('libx264')
@@ -136,6 +136,11 @@ var transcode = function (file, sessionVars) {
 			//console.log('Transcoding: ' + progress.percent + '% done');
 		})
 		.on('end', function () {
+			if (engine) {
+				engine.remove(false, function() {
+					console.log("Removed torrent temp data");
+				});
+			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
 				delete processing[sessionVars.md5];
@@ -173,6 +178,9 @@ var transcode = function (file, sessionVars) {
 		})
 		.on('error', function (err, stdout, stderr) {
 			console.log("Transcoding issue: " + err + stderr);
+			if (engine) {
+				engine.remove();
+			}
 		})
 		.save(dir + sessionVars.md5);
 };
@@ -516,7 +524,7 @@ io.on('connection', function (socket) {
 	
 						sessionVars.ddate = Date.now();
 						socket.emit('torrent', sessionVars.md5);
-						transcode(largestFile.createReadStream(), sessionVars);
+						transcode(largestFile.createReadStream(), sessionVars, engine);
 					}
 				});
 			} catch (e) { }
