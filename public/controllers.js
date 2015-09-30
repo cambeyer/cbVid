@@ -73,7 +73,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			animation: true,
 			templateUrl: 'progressForm.html',
 			controller: 'ProgressForm',
-			size: 'lg',
+			size: 'md',
 			scope: $scope
 		});
 	};
