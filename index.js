@@ -480,6 +480,7 @@ io.on('connection', function (socket) {
 		sessionVars.torrentLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.torrentLink);
 		if (sessionVars.torrentLink) {
 			try {
+				console.log("Initializing torrent request");
 				var engine = torrentStream(sessionVars.torrentLink, {
 					verify: true,
 					dht: true,

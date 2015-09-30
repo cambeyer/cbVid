@@ -36,6 +36,8 @@ li.animate-repeat {
   max-height: 40px;
 }
 
+.nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+
 html, body {
 	padding: 0px;
 	margin: 0px;

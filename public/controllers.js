@@ -1,17 +1,21 @@
 /*global angular*/
-angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'ngAnimate']);
+angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'cbVidApp.services', 'ngAnimate']);
 
 //main Angular module
-angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $cookies, $document, $window, $sce) {
-
-	$scope.uploading = {};
-	$scope.processing = {};
-
-	$scope.viewers = [];
+angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $cookies, $document, $window, $sce, $modal, EncryptService) {
 
 	$scope.activeVideo = {
 		filename: ''
 	};
+	
+	$scope.viewers = [];
+	
+	$rootScope.uploading = {};
+	$scope.uploadModal;
+	$rootScope.processing = {};
+	$scope.progressModal;
+	
+	$scope.torrentLink;
 
 	$scope.videoList = {};
 
@@ -20,16 +24,13 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 
 	$scope.confirmPassword = false;
 
-	$scope.srpClient;
+	$rootScope.srpClient;
 	$scope.srpObj = {};
 
-	$scope.sessionNumber = 0;
+	$rootScope.sessionNumber = 0;
 	$scope.videoFile;
-	$scope.torrentLink;
 
-	$scope.encryptedPhrases = {};
-
-	$scope.fields = {
+	$rootScope.fields = {
 		username: "",
 		password: "",
 		passwordConfirm: ""
@@ -37,11 +38,11 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 
 	//initialize the Socket.IO environment
 	/*global io*/
-	$scope.socket = io();
+	$rootScope.socket = io();
 
 	$document.ready(function (){
 		$('#username').focus();
-		if ($scope.fields.username) {
+		if ($rootScope.fields.username) {
 			$('#password').focus();
 		}
 	});
@@ -50,114 +51,78 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 		$cookies.remove('username');
 		$window.location.reload();
 	};
+	
+	$scope.showUploadDialog = function () {
+		$scope.uploadModal = $modal.open({
+			animation: true,
+			templateUrl: 'uploadForm.html',
+			controller: 'UploadForm',
+			size: 'lg',
+			scope: $scope
+		});
 
-	$scope.uploadFile = function () {
-		if (document.getElementById("file").files.length > 0) {
-			var oData = new FormData();
-			oData.append("username", $scope.fields.username);
-			oData.append("session", $scope.sessionNumber);
-			oData.append("date", $scope.encrypt(Date.now().toString()));
-			oData.append("viewers", JSON.stringify($scope.viewers));
-			$scope.viewers = [];
-			oData.append("file", document.getElementById("file").files[0]);
-			var filename = document.getElementById("file").files[0].name;
-			$scope.uploading[filename] = {};
-			$scope.uploading[filename].percent = 0;
-			var oReq = new XMLHttpRequest();
-			oReq.upload.addEventListener('progress', function (e) {
-				$scope.$apply(function () {
-					$scope.uploading[filename].percent = Math.floor(e.loaded / e.total * 100).toFixed(0);
-				});
-			}, false);
-			oReq.open("post", "upload", true);
-			oReq.responseType = "text";
-			oReq.onreadystatechange = function () {
-				if (oReq.readyState == 4 && oReq.status == 200) {
-					var md5 = oReq.response;
-					$scope.$apply(function () {
-						delete $scope.uploading[filename];
-						$scope.processing[md5] = {};
-						$scope.processing[md5].percent = 0;
-						$scope.sendSubscriptions();
-					});
-				} else if (oReq.readyState == 4 && oReq.status !== 200) {
-					alert("There was an error uploading your file");
-				}
-			};
-			$("#file").replaceWith($("#file").clone());
-			oReq.send(oData);
-		}
+		$scope.uploadModal.result.then(function (shouldShowProgress) {
+			if (shouldShowProgress) {
+				$scope.showProgressDialog();
+			}
+		});
+	};
+	
+	$scope.showProgressDialog = function () {
+		$scope.progressModal = $modal.open({
+			animation: true,
+			templateUrl: 'progressForm.html',
+			controller: 'ProgressForm',
+			size: 'lg',
+			scope: $scope
+		});
 	};
 
-	$scope.socket.on('reconnect', function (num) {
+	$rootScope.socket.on('reconnect', function (num) {
 		console.log("Reconnect");
 		$scope.$apply(function () {
 			$scope.verify();
-			$scope.sendSubscriptions();
+			$rootScope.sendSubscriptions();
 		});
 	});
-
-	$scope.sendSubscriptions = function() {
-		for (var md5 in $scope.processing) {
-			$scope.socket.emit('subscribe', md5);
+	
+	$rootScope.sendSubscriptions = function() {
+		for (var md5 in $rootScope.processing) {
+			$rootScope.socket.emit('subscribe', md5);
 		}
 	};
 
 	$scope.resetControls = function () {
 		$scope.confirmPassword = false;
-		$scope.fields.passwordConfirm = "";
-		$scope.fields.username = $scope.fields.username.replace(/\W/g, '');
-	};
-
-	$scope.checkViewers = function () {
-		for (var i = 0; i < $scope.viewers.length; i++) {
-			$scope.viewers[i].username = $scope.viewers[i].username.replace(/\W/g, '');
-		}
-	};
-
-	$scope.encrypt = function (text) {
-		if (!$scope.encryptedPhrases[text]) {
-			$scope.encryptedPhrases[text] = CryptoJS.AES.encrypt(text, $scope.srpClient.getSharedKey()).toString();
-		}
-		return $scope.encryptedPhrases[text];
+		$rootScope.fields.passwordConfirm = "";
+		$rootScope.fields.username = $rootScope.fields.username.replace(/\W/g, '');
 	};
 
 	$scope.videoString = function (videoFile) {
-		if ($scope.fields.username && $scope.sessionNumber) {
+		if ($rootScope.fields.username && $rootScope.sessionNumber) {
 			$scope.videoFile = videoFile;
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./download?" + "username=" + $scope.fields.username + "&session=" + $scope.sessionNumber + "&file=" + btoa($scope.encrypt($scope.videoFile)));
+			return $sce.trustAsResourceUrl("./download?" + "username=" + $rootScope.fields.username + "&session=" + $rootScope.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
 	};
 
 	$scope.deleteVideo = function (filename) {
 		var delReq = {};
-		delReq['username'] = $scope.fields.username;
-		delReq['session'] = $scope.sessionNumber;
-		delReq['file'] = $scope.encrypt(filename);
+		delReq['username'] = $rootScope.fields.username;
+		delReq['session'] = $rootScope.sessionNumber;
+		delReq['file'] = EncryptService.encrypt(filename);
 		if (confirm("Do you really want to delete this video?")) {
-			$scope.socket.emit('delete', delReq);
+			$rootScope.socket.emit('delete', delReq);
 		}
-	};
-
-	$scope.sendTorrent = function () {
-		var torrentReq = {};
-		torrentReq['username'] = $scope.fields.username;
-		torrentReq['session'] = $scope.sessionNumber;
-		torrentReq['torrentLink'] = $scope.encrypt($scope.torrentLink);
-		torrentReq['viewers'] = JSON.stringify($scope.viewers);
-		$scope.viewers = [];
-		$scope.torrentLink = "";
-		$scope.socket.emit('torrent', torrentReq);
 	};
 
 	$scope.removeMe = function (filename) {
 		var remReq = {};
-		remReq['username'] = $scope.fields.username;
-		remReq['session'] = $scope.sessionNumber;
-		remReq['file'] = $scope.encrypt(filename);
+		remReq['username'] = $rootScope.fields.username;
+		remReq['session'] = $rootScope.sessionNumber;
+		remReq['file'] = EncryptService.encrypt(filename);
 		if (confirm("Do you really want to remove your access to this video?")) {
-			$scope.socket.emit('remove', remReq);
+			$rootScope.socket.emit('remove', remReq);
 		}
 	};
 
@@ -193,51 +158,89 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 	};
 
 	$interval(function() {
-		if ($scope.videoFile && $scope.sessionNumber) {
+		if ($scope.videoFile && $rootScope.sessionNumber) {
 			var pingObj = {};
-			pingObj.hashed = CryptoJS.MD5($scope.videoFile + $scope.sessionNumber).toString();
-			pingObj.value = btoa($scope.encrypt(Date.now().toString()).toString());
-			$scope.socket.emit('keepalive', pingObj);
+			pingObj.hashed = CryptoJS.MD5($scope.videoFile + $rootScope.sessionNumber).toString();
+			pingObj.value = btoa(EncryptService.encrypt(Date.now().toString()).toString());
+			$rootScope.socket.emit('keepalive', pingObj);
 		}
 	}, 1000);
 
 	$scope.login = function () {
-		if ($scope.fields.username && $scope.fields.password) {
+		if ($rootScope.fields.username && $rootScope.fields.password) {
 			$scope.authed = false;
 			$scope.loading = true;
-			$scope.sessionNumber = 0;
+			$rootScope.sessionNumber = 0;
 			if (!$scope.confirmPassword) {
 				/*global jsrp*/
-				$scope.srpClient = new jsrp.client();
+				$rootScope.srpClient = new jsrp.client();
 				/*global CryptoJS*/
-				$scope.srpClient.init({ username: $scope.fields.username, password: CryptoJS.MD5($scope.fields.password).toString() }, function () {
+				$rootScope.srpClient.init({ username: $rootScope.fields.username, password: CryptoJS.MD5($rootScope.fields.password).toString() }, function () {
 					$scope.srpObj = {};
-					$scope.srpObj.username = $scope.fields.username;
-					$scope.srpObj.publicKey = $scope.srpClient.getPublicKey();
-					$scope.socket.emit('login', $scope.srpObj);
+					$scope.srpObj.username = $rootScope.fields.username;
+					$scope.srpObj.publicKey = $rootScope.srpClient.getPublicKey();
+					$rootScope.socket.emit('login', $scope.srpObj);
 				});
 			} else {
-				if ($scope.fields.passwordConfirm == $scope.fields.password) {
-					$scope.srpClient.createVerifier(function (err, result) {
+				if ($rootScope.fields.passwordConfirm == $rootScope.fields.password) {
+					$rootScope.srpClient.createVerifier(function (err, result) {
 						if (!err) {
 							$scope.srpObj.salt = result.salt;
 							$scope.srpObj.verifier = result.verifier;
-							$scope.socket.emit('new', $scope.srpObj);
+							$rootScope.socket.emit('new', $scope.srpObj);
 						} else {
 							console.log("Error creating verifier.");
 						}
 				    });
 				} else {
 					alert("Your passwords do not match.  Please try again.");
-					$scope.fields.passwordConfirm = "";
-					$scope.fields.password = "";
+					$rootScope.fields.passwordConfirm = "";
+					$rootScope.fields.password = "";
 					$("#password").focus();
 				}
 			}
 		}
 	};
+	
+	$scope.uploadFile = function () {
+		if (document.getElementById("file").files.length > 0) {
+			var oData = new FormData();
+			oData.append("username", $rootScope.fields.username);
+			oData.append("session", $rootScope.sessionNumber);
+			oData.append("date", EncryptService.encrypt(Date.now().toString()));
+			oData.append("viewers", JSON.stringify($scope.viewers));
+			$scope.viewers = [];
+			oData.append("file", document.getElementById("file").files[0]);
+			var filename = document.getElementById("file").files[0].name;
+			$rootScope.uploading[filename] = {};
+			$rootScope.uploading[filename].percent = 0;
+			var oReq = new XMLHttpRequest();
+			oReq.upload.addEventListener('progress', function (e) {
+				$scope.$apply(function () {
+					$rootScope.uploading[filename].percent = Math.floor(e.loaded / e.total * 100).toFixed(0);
+				});
+			}, false);
+			oReq.open("post", "upload", true);
+			oReq.responseType = "text";
+			oReq.onreadystatechange = function () {
+				if (oReq.readyState == 4 && oReq.status == 200) {
+					var md5 = oReq.response;
+					$scope.$apply(function () {
+						delete $rootScope.uploading[filename];
+						$rootScope.processing[md5] = {};
+						$rootScope.processing[md5].percent = 0;
+						$rootScope.sendSubscriptions();
+					});
+				} else if (oReq.readyState == 4 && oReq.status !== 200) {
+					alert("There was an error uploading your file");
+				}
+			};
+			$("#file").replaceWith($("#file").clone());
+			oReq.send(oData);
+		}
+	};
 
-	$scope.socket.on('new', function () {
+	$rootScope.socket.on('new', function () {
 		$scope.$apply(function () {
 			$scope.loading = false;
 			$scope.confirmPassword = true;
@@ -247,30 +250,30 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 
 	$scope.verify = function() {
 		var challenge = {};
-		challenge.username = $scope.fields.username;
-		challenge.sessionNumber = $scope.sessionNumber;
-		challenge.encryptedPhrase = $scope.encrypt('client');
-		$scope.socket.emit('verify', challenge);
+		challenge.username = $rootScope.fields.username;
+		challenge.sessionNumber = $rootScope.sessionNumber;
+		challenge.encryptedPhrase = EncryptService.encrypt('client');
+		$rootScope.socket.emit('verify', challenge);
 	};
 
-	$scope.socket.on('login', function (srpResponse) {
-		$scope.srpClient.setSalt(srpResponse.salt);
-		$scope.srpClient.setServerPublicKey(srpResponse.publicKey);
+	$rootScope.socket.on('login', function (srpResponse) {
+		$rootScope.srpClient.setSalt(srpResponse.salt);
+		$rootScope.srpClient.setServerPublicKey(srpResponse.publicKey);
 		try {
-			$scope.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $scope.srpClient.getSharedKey()).toString(CryptoJS.enc.Utf8);
+			$rootScope.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $rootScope.srpClient.getSharedKey()).toString(CryptoJS.enc.Utf8);
 		} catch (e) { }
-		var successBool = (!isNaN($scope.sessionNumber) && $scope.sessionNumber > 0);
-		//console.log("Successfully established session: " + $scope.sessionNumber);
+		var successBool = (!isNaN($rootScope.sessionNumber) && $rootScope.sessionNumber > 0);
+		//console.log("Successfully established session: " + $rootScope.sessionNumber);
 		$scope.$apply(function () {
 			$scope.loading = false;
 			$scope.authed = successBool;
 			if (!$scope.authed) {
 				$scope.error = true;
-				$scope.fields.password = "";
+				$rootScope.fields.password = "";
 			} else {
 				$scope.error = false;
-				$cookies.put('username', $scope.fields.username);
-				//$scope.fields.password = "";
+				$cookies.put('username', $rootScope.fields.username);
+				//$rootScope.fields.password = "";
 
 				$scope.verify();
 				//load list of videos from the server
@@ -278,38 +281,41 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 		});
 	});
 
-	$scope.socket.on('progress', function (msg){
+	$rootScope.socket.on('progress', function (msg){
 		$scope.$apply(function () {
 			var percent;
 			if (msg.percent) {
 				percent = Math.floor(msg.percent).toFixed(0);
-				$scope.processing[msg.md5].percent = percent;
+				$rootScope.processing[msg.md5].percent = percent;
 			} else {
-				delete $scope.processing[msg.md5].percent;
+				delete $rootScope.processing[msg.md5].percent;
 			}
-			$scope.processing[msg.md5].timestamp = msg.timestamp;
-			if (!$scope.processing[msg.md5].name && msg.name) {
-				$scope.processing[msg.md5].name = msg.name;
+			$rootScope.processing[msg.md5].timestamp = msg.timestamp;
+			if (!$rootScope.processing[msg.md5].name && msg.name) {
+				$rootScope.processing[msg.md5].name = msg.name;
 			}
 			if (percent >= 100) {
 				try {
-					delete $scope.processing[msg.md5];
+					delete $rootScope.processing[msg.md5];
+					if (Object.keys($rootScope.processing).length == 0 && Object.keys($rootScope.uploading).length == 0) {
+						$scope.progressModal.close();
+					}
 				} catch (e) {}
 			}
 		});
 	});
 
-	$scope.socket.on('torrent', function (md5) {
+	$rootScope.socket.on('torrent', function (md5) {
 		$scope.$apply(function () {
-			$scope.processing[md5] = {};
-			$scope.processing[md5].percent = 0;
-			$scope.sendSubscriptions();
+			$rootScope.processing[md5] = {};
+			$rootScope.processing[md5].percent = 0;
+			$rootScope.sendSubscriptions();
 		});
 	});
 
-	$scope.socket.on('list', function (videoList) {
+	$rootScope.socket.on('list', function (videoList) {
 		$scope.$apply(function () {
-			if (videoList.username == $scope.fields.username) {
+			if (videoList.username == $rootScope.fields.username) {
 				for (var i = 0; i < videoList.edit.length; i++) {
 					videoList.edit[i].edit = true;
 				}
@@ -339,6 +345,45 @@ angular.module('cbVidApp.controllers', ['ngCookies']).controller('mainController
 	//Perform after all of the functions have been defined
 
 	if ($cookies.get('username')) {
-		$scope.fields.username = $cookies.get('username');
+		$rootScope.fields.username = $cookies.get('username');
 	}
+})
+.controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
+	
+	$scope.ok = function () {
+		$modalInstance.close(false);
+	};
+	/*
+	$scope.$on('modal.closing', function(event, reason, closed) {
+		event.preventDefault();
+	});
+	*/
+	
+	$scope.checkViewers = function () {
+		for (var i = 0; i < $scope.viewers.length; i++) {
+			$scope.viewers[i].username = $scope.viewers[i].username.replace(/\W/g, '');
+		}
+	};
+	
+	$scope.sendTorrent = function () {
+		var torrentReq = {};
+		torrentReq['username'] = $rootScope.fields.username;
+		torrentReq['session'] = $rootScope.sessionNumber;
+		torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrentLink);
+		torrentReq['viewers'] = JSON.stringify($scope.viewers);
+		$scope.viewers = [];
+		$scope.torrentLink = "";
+		$rootScope.socket.emit('torrent', torrentReq);
+		$modalInstance.close(true);
+	};
+	
+	$scope.upload = function() {
+		$scope.uploadFile();
+		$modalInstance.close(true);
+	};
+})
+.controller('ProgressForm', function ($scope, $modalInstance) {
+	$scope.ok = function () {
+		$modalInstance.close();
+	};
 });

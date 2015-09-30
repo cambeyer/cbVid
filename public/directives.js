@@ -272,7 +272,8 @@ directive('uploadForm', function ($rootScope) {
 			});
 		}
 	};
-}).directive('progressBar', function ($document) {
+})
+.directive('progressBar', function ($document) {
 	return {
 		restrict: 'E',
 		scope: {
