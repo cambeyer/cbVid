@@ -5,9 +5,9 @@ angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'cbVi
 angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $cookies, $document, $window, $sce, $modal, EncryptService) {
 
 	$scope.activeVideo;
-	
+
 	$scope.viewers = [];
-	
+
 	$rootScope.uploading = {};
 	$scope.uploadModal;
 	$rootScope.processing = {};
@@ -47,7 +47,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		$cookies.remove('username');
 		$window.location.reload();
 	};
-	
+
 	$scope.showUploadDialog = function () {
 		$scope.uploadModal = $modal.open({
 			animation: true,
@@ -63,7 +63,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			}
 		});
 	};
-	
+
 	$scope.showProgressDialog = function () {
 		$scope.progressModal = $modal.open({
 			animation: true,
@@ -81,7 +81,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			$rootScope.sendSubscriptions();
 		});
 	});
-	
+
 	$rootScope.sendSubscriptions = function() {
 		for (var md5 in $rootScope.processing) {
 			$rootScope.socket.emit('subscribe', md5);
@@ -197,7 +197,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			}
 		}
 	};
-	
+
 	$scope.uploadFile = function () {
 		if (document.getElementById("file").files.length > 0) {
 			var oData = new FormData();
@@ -233,6 +233,9 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			};
 			$("#file").replaceWith($("#file").clone());
 			oReq.send(oData);
+			return true;
+		} else {
+			return false;
 		}
 	};
 
@@ -347,12 +350,12 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	}
 })
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
-	
+
 	$scope.type = "file";
 	$scope.torrent = {
 		magnet: ''
 	};
-	
+
 	$scope.ok = function () {
 		$modalInstance.close(false);
 	};
@@ -361,13 +364,13 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		event.preventDefault();
 	});
 	*/
-	
+
 	$scope.checkViewers = function () {
 		for (var i = 0; i < $scope.viewers.length; i++) {
 			$scope.viewers[i].username = $scope.viewers[i].username.replace(/\W/g, '');
 		}
 	};
-	
+
 	$scope.sendTorrent = function() {
 		var torrentReq = {};
 		torrentReq['username'] = $rootScope.fields.username;
@@ -379,10 +382,11 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		$rootScope.socket.emit('torrent', torrentReq);
 		$modalInstance.close(true);
 	};
-	
+
 	$scope.upload = function() {
-		$scope.uploadFile();
-		$modalInstance.close(true);
+		if ($scope.uploadFile()) {
+			$modalInstance.close(true);
+		}
 	};
 })
 .controller('ProgressForm', function ($scope, $modalInstance) {
