@@ -4,9 +4,7 @@ angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'cbVi
 //main Angular module
 angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $cookies, $document, $window, $sce, $modal, EncryptService) {
 
-	$scope.activeVideo = {
-		filename: ''
-	};
+	$scope.activeVideo;
 	
 	$scope.viewers = [];
 	
@@ -57,7 +55,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			animation: true,
 			templateUrl: 'uploadForm.html',
 			controller: 'UploadForm',
-			size: 'lg',
+			size: 'md',
 			scope: $scope
 		});
 
@@ -126,12 +124,12 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		}
 	};
 
-	$scope.setVideo = function (filename) {
-		if (filename) {
-			if ($scope.activeVideo.filename == filename) {
+	$scope.setVideo = function (file) {
+		if (file) {
+			if ($scope.activeVideo.filename == file.filename) {
 				return;
 			}
-			$scope.activeVideo.filename = filename;
+			$scope.activeVideo = file;
 		}
 		$("#flow").remove();
 		if ($scope.activeVideo.filename) {
@@ -324,17 +322,19 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 				}
 				$scope.videoList = [].concat(videoList.edit).concat(videoList.view);
 				var found = false;
-				for (var i = 0; i < $scope.videoList.length; i++) {
-					if ($scope.videoList[i].filename == $scope.activeVideo.filename) {
-						found = true;
-						break;
+				if ($scope.activeVideo) {
+					for (var i = 0; i < $scope.videoList.length; i++) {
+						if ($scope.videoList[i].filename == $scope.activeVideo.filename) {
+							found = true;
+							break;
+						}
 					}
 				}
 				if (!found) {
 					if ($scope.videoList.length > 0) {
-						$scope.activeVideo.filename = $scope.videoList[0].filename;
+						$scope.activeVideo = $scope.videoList[0];
 					} else {
-						$scope.activeVideo.filename = "";
+						$scope.activeVideo = "";
 					}
 					$scope.setVideo();
 				}
@@ -349,6 +349,8 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	}
 })
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
+	
+	$scope.type = "file";
 	
 	$scope.ok = function () {
 		$modalInstance.close(false);

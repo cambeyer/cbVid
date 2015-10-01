@@ -73,52 +73,18 @@ a:active {
     color: black;
 }
 
-a.button {
-	border: 1px solid black;
-	text-decoration : none;
-	border-radius: 5px;
-	padding: 10px;
-	background-color: white;
-}
-
 .mySubmit {
-    background:url(go.png) no-repeat;
+  background:url(go.png) no-repeat;
 	background-size: 55px 55px;
-    cursor: pointer;
-    width: 60px;
-    height: 60px;
-    border: none;
-}
-
-button, .button {
-	height: 40px;
-	padding-left: 20px;
-	padding-right: 20px;
+  cursor: pointer;
+  width: 60px;
+  height: 60px;
+  border: none;
 }
 
 .flowplayer {
-   max-width: 1000px;
+   max-width: 720px;
    /*max-height: 500px;*/
-}
-
-.hidden {
-  display: none !important;
-}
-
-.loginctrl {
-	height: 40px;
-	padding-left: 10px;
-	padding-right: 10px;
-	width: 220px;
-}
-
-select {
-	border: 1px solid #909090;
-	background: #F1F1F1;
-	padding: 10px;
-	-webkit-appearance: none;
-	-moz-appearance: none;
-	appearance: none;
 }
 
 .noselect {

@@ -21,38 +21,36 @@ angular.module('cbVidApp.directives', [])
 		restrict: 'E',
 		template: '' +
 			'<form ng-submit="login()">' +
-				'<table style="background-color: #4558A7; color: white; padding: 30px; padding-left: 100px; padding-right: 100px; border-radius: 10px; border: 1px solid white" cellpadding="20" cellspacing="0" border="0" align="center">' +
-					'<tr>' +
-						'<td colspan="2">' +
-							'<h2>cbVid Sign Up/Login</h2>' +
-							'<span ng-if="error" style="color: red"><br>Incorrect login credentials</span>' +
-						'</td>' +
-					'</tr>' +
-					'<tr>' +
-						'<td>Username:</td>' +
-						'<td>' +
-							'<input id="username" class="loginctrl" type="text" ng-change="resetControls(this)" ng-model="fields.username" ng-trim="false" maxlength="20">' +
-						'</td>' +
-					'</tr>' +
-					'<tr>' +
-						'<td>Password:</td>' +
-						'<td>' +
-							'<input id="password" class="loginctrl" type="password" maxlength="128" ng-model="fields.password">' +
-						'</td>' +
-					'</tr>' +
-					'<tr ng-if="confirmPassword">' +
-						'<td>Confirm:</td>' +
-						'<td>' +
-							'<input id="confirm" class="loginctrl" type="password" maxlength="128" ng-model="fields.passwordConfirm">' +
-						'</td>' +
-					'</tr>' +
-					'<tr>' +
-						'<td colspan="2">' +
-							'<input ng-show="!loading" class="mySubmit" type="submit" value="">' +
-							'<span ng-show="loading"><img src="loading.gif" style="max-width: 60px"></span>' +
-						'</td>' +
-					'</tr>' +
-				'</table>' +
+				'<div class="container" style="text-align: center; max-width: 450px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: 9D9D9D; padding: 50px; border-radius: 20px; border: 1px solid black">' + 
+					'<div class="row">' + 
+						'<img src="logo.png" style="max-height: 60px; margin-bottom: 20px">' +
+					'</div>' + 
+					'<div class="row">' + 
+						'<div ng-if="error" style="color: red; margin-bottom: 20px"><br>Incorrect login credentials</div>' +
+					'</div>' + 
+					'<div class="row">' + 
+						'<div class="form-group">' + 
+							'<label for="username">Username:</label>' + 
+							'<input type="text" class="form-control" id="username" ng-change="resetControls(this)" ng-model="fields.username" ng-trim="false" maxlength="20" placeholder="Username">' + 
+						'</div>' + 
+					'</div>' + 
+					'<div class="row">' + 
+						'<div class="form-group">' + 
+							'<label for="password">Password:</label>' + 
+							'<input type="password" class="form-control" id="password" ng-model="fields.password" maxlength="128" placeholder="Password">' + 
+						'</div>' + 
+					'</div>' + 
+					'<div class="row" ng-if="confirmPassword">' + 
+						'<div class="form-group">' + 
+							'<label for="confirm">Confirm:</label>' + 
+							'<input type="password" class="form-control" id="confirm" ng-model="fields.passwordConfirm" maxlength="128" placeholder="Confirm Password">' + 
+						'</div>' + 
+					'</div>' + 
+					'<div class="row" style="margin-top: 20px">' + 
+						'<input ng-show="!loading" class="mySubmit" type="submit" value="">' +
+						'<span ng-show="loading"><img src="loading.gif" style="max-width: 60px"></span>' +
+					'</div>' + 
+				'</div>' + 
 			'</form>',
 		controller: function ($scope) {
 		}
