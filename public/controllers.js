@@ -12,8 +12,6 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	$scope.uploadModal;
 	$rootScope.processing = {};
 	$scope.progressModal;
-	
-	$scope.torrentLink;
 
 	$scope.videoList = {};
 
@@ -351,6 +349,9 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
 	
 	$scope.type = "file";
+	$scope.torrent = {
+		magnet: ''
+	};
 	
 	$scope.ok = function () {
 		$modalInstance.close(false);
@@ -367,14 +368,14 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		}
 	};
 	
-	$scope.sendTorrent = function () {
+	$scope.sendTorrent = function() {
 		var torrentReq = {};
 		torrentReq['username'] = $rootScope.fields.username;
 		torrentReq['session'] = $rootScope.sessionNumber;
-		torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrentLink);
+		torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrent.magnet);
 		torrentReq['viewers'] = JSON.stringify($scope.viewers);
 		$scope.viewers = [];
-		$scope.torrentLink = "";
+		$scope.torrent.magnet = "";
 		$rootScope.socket.emit('torrent', torrentReq);
 		$modalInstance.close(true);
 	};
