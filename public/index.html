@@ -116,14 +116,14 @@
 
 		<div class="container-fluid" ng-show="authed" drag-and-drop style="height: 100%">
 			<div class="row">
-				<div class="col-lg-7">
+				<div class="col-lg-6">
 					<div style="text-align: center">
 						<div class="player"></div>
 						<h3 style="margin-bottom: 20px">{{activeVideo.details.original}}</h2>
 						<h5 style="margin-bottom: 50px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h4>
 					</div>
 				</div>
-				<div class="col-lg-5">
+				<div class="col-lg-6">
 					<table ng-if="!(videoList | isEmpty)" class="table table-striped table-hover table-bordered">
 						<tr ng-repeat="video in videoList | orderBy: 'details.original'">
 							<td ng-class="{'activevideo': video.filename == activeVideo.filename}" ng-bind="video.details.original" ng-click="setVideo(video)"></td>
