@@ -582,7 +582,19 @@ io.on('connection', function (socket) {
 
 				sessionVars.ddate = Date.now().toString();
 				socket.emit('processing', sessionVars.md5);
-				transcode(request(sessionVars.ingestLink), sessionVars);
+				request(sessionVars.ingestLink, function (err, response, body) {
+					if (!err && response.statusCode == 200) {
+						transcode(response, sessionVars);
+					} else {
+						if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
+							processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
+							delete processing[sessionVars.md5];
+						} else {
+							done.push(sessionVars.md5);
+						}
+						console.log('File has been abandoned due to error: ' + sessionVars.md5);
+					}
+				});
 			} catch (e) { }
 		}
 	});
