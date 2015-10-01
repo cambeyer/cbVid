@@ -59,8 +59,8 @@ app.route('/upload').post(function (req, res, next) {
 	var sessionVars = {};
 	var fstream;
 	var filename;
-	req.on('close', function (err) {
-		if (err && fstream && filename) {
+	req.on('close', function () {
+		if (fstream && filename) {
 			fstream.end();
 	        fs.unlinkSync(filename);
 		}
