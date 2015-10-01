@@ -27,7 +27,7 @@
 </head>
 <body ng-app="cbVidApp" style="background-color: #F8F8F8" oncontextmenu="return false;">
 	<div ng-controller="mainController" style="height: 100%" drag-and-drop>
-		
+
 		<script type="text/ng-template" id="uploadForm.html">
 			<div class="modal-header">
 				<h3 class="modal-title">Upload A Video</h3>
@@ -74,7 +74,7 @@
 				<h3 class="modal-title">Video Progress</h3>
 			</div>
 			<div class="modal-body">
-				<table cellpadding="20" cellspacing="0" border="0" width="100%">
+				<table ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" width="100%">
 					<tr ng-hide="uploading | isEmpty" ng-repeat="(file, details) in uploading">
 						<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
 							<div style="padding-top: 10px; padding-bottom: 10px">{{file}}</div>
@@ -89,12 +89,13 @@
 						</td>
 					</tr>
 				</table>
+				<div ng-show="(uploading | isEmpty) && (processing | isEmpty)" style="text-align: center"><h3>No updates yet.</h3></div>
 			</div>
 			<div class="modal-footer">
 				<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
 			</div>
 		</script>
-		
+
 		<loginform ng-if="!authed"></loginform>
 
 		<nav ng-show="authed" class="navbar navbar-default navbar-static-top">

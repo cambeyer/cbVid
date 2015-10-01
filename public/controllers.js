@@ -372,15 +372,17 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	};
 
 	$scope.sendTorrent = function() {
-		var torrentReq = {};
-		torrentReq['username'] = $rootScope.fields.username;
-		torrentReq['session'] = $rootScope.sessionNumber;
-		torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrent.magnet);
-		torrentReq['viewers'] = JSON.stringify($scope.viewers);
-		$scope.viewers = [];
-		$scope.torrent.magnet = "";
-		$rootScope.socket.emit('torrent', torrentReq);
-		$modalInstance.close(true);
+		if ($scope.torrent.magnet) {
+			var torrentReq = {};
+			torrentReq['username'] = $rootScope.fields.username;
+			torrentReq['session'] = $rootScope.sessionNumber;
+			torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrent.magnet);
+			torrentReq['viewers'] = JSON.stringify($scope.viewers);
+			$scope.viewers = [];
+			$scope.torrent.magnet = "";
+			$rootScope.socket.emit('torrent', torrentReq);
+			$modalInstance.close(true);
+		}
 	};
 
 	$scope.upload = function() {
