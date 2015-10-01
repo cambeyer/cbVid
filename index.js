@@ -57,6 +57,15 @@ var getFiles = function (dir, files_) {
 app.route('/upload').post(function (req, res, next) {
 	var hash = crypto.createHash('md5');
 	var sessionVars = {};
+	var fstream;
+	var filename;
+	req.on('close', function (err) {
+		if (err && fstream && filename) {
+			fstream.end();
+	        fs.unlinkSync(filename);
+		}
+        console.log("Client disconnected while uploading");
+	});
 	req.busboy.on('field', function (fieldname, val) {
 		sessionVars[fieldname] = val;
 		if (sessionVars.username && sessionVars.session && sessionVars.date) {
@@ -65,7 +74,7 @@ app.route('/upload').post(function (req, res, next) {
 	});
 	req.busboy.on('file', function (fieldname, stream, name) {
 		console.log("Uploading file: " + name);
-		var filename = dir + path.basename(name);
+		filename = dir + path.basename(name);
 		sessionVars.name = name;
 		var num = 0;
 		var exists = true;
@@ -78,7 +87,7 @@ app.route('/upload').post(function (req, res, next) {
 				exists = false;
 			}
 		}
-		var fstream = fs.createWriteStream(filename);
+		fstream = fs.createWriteStream(filename);
 		stream.on('data', function (chunk) {
 			hash.update(chunk);
 		});
