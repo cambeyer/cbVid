@@ -304,7 +304,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		});
 	});
 
-	$rootScope.socket.on('torrent', function (md5) {
+	$rootScope.socket.on('processing', function (md5) {
 		$scope.$apply(function () {
 			$rootScope.processing[md5] = {};
 			$rootScope.processing[md5].percent = 0;
@@ -352,8 +352,9 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
 
 	$scope.type = "file";
-	$scope.torrent = {
-		magnet: ''
+	$scope.custom = {
+		magnet: "",
+		ingest: ""
 	};
 
 	$scope.ok = function () {
@@ -372,15 +373,29 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	};
 
 	$scope.sendTorrent = function() {
-		if ($scope.torrent.magnet) {
+		if ($scope.custom.magnet) {
 			var torrentReq = {};
 			torrentReq['username'] = $rootScope.fields.username;
 			torrentReq['session'] = $rootScope.sessionNumber;
-			torrentReq['torrentLink'] = EncryptService.encrypt($scope.torrent.magnet);
+			torrentReq['torrentLink'] = EncryptService.encrypt($scope.custom.magnet);
 			torrentReq['viewers'] = JSON.stringify($scope.viewers);
 			$scope.viewers = [];
-			$scope.torrent.magnet = "";
+			$scope.custom.magnet = "";
 			$rootScope.socket.emit('torrent', torrentReq);
+			$modalInstance.close(true);
+		}
+	};
+
+	$scope.sendIngest = function() {
+		if ($scope.custom.ingest) {
+			var ingestReq = {};
+			ingestReq['username'] = $rootScope.fields.username;
+			ingestReq['session'] = $rootScope.sessionNumber;
+			ingestReq['ingestLink'] = EncryptService.encrypt($scope.custom.ingest);
+			ingestReq['viewers'] = JSON.stringify($scope.viewers);
+			$scope.viewers = [];
+			$scope.custom.ingest = "";
+			$rootScope.socket.emit('ingest', ingestReq);
 			$modalInstance.close(true);
 		}
 	};

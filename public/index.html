@@ -53,6 +53,7 @@
 				<div style="padding-bottom: 10px; padding-left: 10px">
 					<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="file">File</label>
 					<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="torrent">Torrent</label>
+					<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="ingest">Ingest</label>
 				</div>
 				<table class="table">
 					<tr ng-if="type == 'file'">
@@ -60,8 +61,12 @@
 						<td align="right"><button class="btn btn-default" id="upload" ng-click="upload()">Upload</button></td>
 					</tr>
 					<tr ng-if="type == 'torrent'">
-						<td><input type="text" ng-model="torrent.magnet" class="form-control" placeholder="Magnet Link"></td>
+						<td><input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link"></td>
 						<td align="right"><button class="btn btn-default" id="torrent" ng-click="sendTorrent()">Torrent</button></td>
+					</tr>
+					<tr ng-if="type == 'ingest'">
+						<td><input type="text" ng-model="custom.ingest" class="form-control" placeholder="URL"></td>
+						<td align="right"><button class="btn btn-default" id="ingest" ng-click="sendIngest()">Ingest</button></td>
 					</tr>
 				</table>
 			</div>

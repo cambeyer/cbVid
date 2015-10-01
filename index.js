@@ -4,6 +4,7 @@ var busboy = require('connect-busboy');
 var path = require('path');
 var fs = require('fs-extra');
 var http = require('http').Server(app);
+var request = require('request');
 var io = require('socket.io')(http);
 var torrentStream = require('torrent-stream');
 var crypto = require('crypto');
@@ -539,11 +540,66 @@ io.on('connection', function (socket) {
 							}
 						}
 
-						sessionVars.ddate = Date.now();
-						socket.emit('torrent', sessionVars.md5);
+						sessionVars.ddate = Date.now().toString();
+						socket.emit('processing', sessionVars.md5);
 						transcode(largestFile.createReadStream(), sessionVars, engine);
 					}
 				});
+			} catch (e) { }
+		}
+	});
+	socket.on('ingest', function(sessionVars) {
+		sessionVars.ingestLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.ingestLink);
+		if (sessionVars.ingestLink) {
+			try {
+				console.log("Initiating ingest request");
+
+				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1];
+				filename = filename ? filename : "ingested";
+				sessionVars.name = filename;
+				filename = dir + filename;
+
+				var num = 0;
+				var exists = true;
+				while (exists) {
+					try {
+						fs.statSync(filename + num);
+						num = num + 1;
+					} catch (e) {
+						filename = filename + num;
+						exists = false;
+					}
+				}
+
+				var hash = crypto.createHash('md5');
+				var stream = request(sessionVars.ingestLink);
+				var fstream = fs.createWriteStream(filename);
+				stream.on('data', function (chunk) {
+					hash.update(chunk);
+					//downloaded = downloaded + chunk.length;
+					//percent = downloaded / filesize;
+				});
+				stream.on('response', function (data) {
+					//filesize = data.headers['content-length'];
+				});
+				fstream.on('close', function () {
+					sessionVars.md5 = hash.digest('hex');
+					var num = 0;
+					var exists = true;
+					while (exists) {
+						try {
+							fs.statSync(dir + sessionVars.md5 + num);
+							num = num + 1;
+						} catch (e) {
+							sessionVars.md5 = sessionVars.md5 + num;
+							exists = false;
+						}
+					}
+					sessionVars.ddate = Date.now().toString();
+					socket.emit('processing', sessionVars.md5);
+					transcode(filename, sessionVars);
+				});
+				stream.pipe(fstream);
 			} catch (e) { }
 		}
 	});
