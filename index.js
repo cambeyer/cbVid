@@ -177,10 +177,27 @@ var transcode = function (file, sessionVars, engine) {
 			}
 		})
 		.on('error', function (err, stdout, stderr) {
-			console.log("Transcoding issue: " + err + stderr);
+			//console.log("Transcoding issue: " + err + stderr);
 			if (engine) {
-				engine.remove();
+				engine.remove(false, function() {
+					console.log("Removed torrent temp data");
+				});
 			}
+			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
+				delete processing[sessionVars.md5];
+				console.log('File has been abandoned due to error: ' + sessionVars.md5);
+			} else {
+				done.push(sessionVars.md5);
+			}
+			try {
+				fs.statSync(file);
+				fs.unlinkSync(file);
+			} catch (e) { }
+			try {
+				fs.statSync(dir + sessionVars.md5);
+				fs.unlinkSync(dir + sessionVars.md5);
+			} catch (e) { }
 		})
 		.save(dir + sessionVars.md5);
 };
@@ -504,12 +521,12 @@ io.on('connection', function (socket) {
 						}
 						console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
 						sessionVars.name = largestFile.name;
-	
+
 						var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
 						md5 = md5.split(":")[md5.split(":").length - 1];
 						md5 = crypto.createHash('md5').update(md5).digest('hex');
 						sessionVars.md5 = md5 ? md5 : "torrented";
-	
+
 						var num = 0;
 						var exists = true;
 						while (exists) {
@@ -521,7 +538,7 @@ io.on('connection', function (socket) {
 								exists = false;
 							}
 						}
-	
+
 						sessionVars.ddate = Date.now();
 						socket.emit('torrent', sessionVars.md5);
 						transcode(largestFile.createReadStream(), sessionVars, engine);
