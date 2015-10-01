@@ -187,10 +187,10 @@ var transcode = function (file, sessionVars, engine) {
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
 				delete processing[sessionVars.md5];
-				console.log('File has been abandoned due to error: ' + sessionVars.md5);
 			} else {
 				done.push(sessionVars.md5);
 			}
+			console.log('File has been abandoned due to error: ' + sessionVars.md5);
 			try {
 				fs.statSync(file);
 				fs.unlinkSync(file);
@@ -554,52 +554,26 @@ io.on('connection', function (socket) {
 			try {
 				console.log("Initiating ingest request");
 
-				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1];
-				filename = filename ? filename : "ingested";
-				sessionVars.name = filename;
-				filename = dir + filename;
+				var md5 = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1];
+				sessionVars.name = md5;
+				md5 = crypto.createHash('md5').update(md5).digest('hex');
+				sessionVars.md5 = md5 ? md5 : "ingested";
 
 				var num = 0;
 				var exists = true;
 				while (exists) {
 					try {
-						fs.statSync(filename + num);
+						fs.statSync(dir + sessionVars.md5 + num);
 						num = num + 1;
 					} catch (e) {
-						filename = filename + num;
+						sessionVars.md5 = sessionVars.md5 + num;
 						exists = false;
 					}
 				}
 
-				var hash = crypto.createHash('md5');
-				var stream = request(sessionVars.ingestLink);
-				var fstream = fs.createWriteStream(filename);
-				stream.on('data', function (chunk) {
-					hash.update(chunk);
-					//downloaded = downloaded + chunk.length;
-					//percent = downloaded / filesize;
-				});
-				stream.on('response', function (data) {
-					//filesize = data.headers['content-length'];
-				});
-				fstream.on('close', function () {
-					sessionVars.md5 = hash.digest('hex');
-					var num = 0;
-					var exists = true;
-					while (exists) {
-						try {
-							fs.statSync(dir + sessionVars.md5 + num);
-							num = num + 1;
-						} catch (e) {
-							sessionVars.md5 = sessionVars.md5 + num;
-							exists = false;
-						}
-					}
-					sessionVars.ddate = Date.now().toString();
-					socket.emit('processing', sessionVars.md5);
-					transcode(filename, sessionVars);
-				});
-				stream.pipe(fstream);
+				sessionVars.ddate = Date.now().toString();
+				socket.emit('processing', sessionVars.md5);
+				transcode(request(sessionVars.ingestLink), sessionVars);
 			} catch (e) { }
 		}
 	});
