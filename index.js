@@ -420,7 +420,7 @@ io.on('connection', function (socket) {
 		console.log("Subscription from client for processing updates " + md5);
 		for (var i = 0; i < done.length; i++) {
 			if (done[i] == md5) {
-				console.log("File finished transcoding before client subscription; sending success");
+				console.log("File finished transcoding before client subscription; sending that information back to the client");
 				socket.emit('progress', { md5: md5, percent: 100 });
 				done.splice(i, 1);
 				return;
