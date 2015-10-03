@@ -118,7 +118,9 @@ app.route('/upload').post(function (req, res, next) {
 });
 
 var transcode = function (file, sessionVars, engine) {
-	ffmpeg(file)
+	var percent;
+	var timestamp;
+	var command = ffmpeg(file)
 		.videoBitrate('1024k')
 		.videoCodec('libx264')
 		.fps(30)
@@ -131,9 +133,11 @@ var transcode = function (file, sessionVars, engine) {
 		.outputOption('-analyzeduration 2147483647')
 		.outputOption('-probesize 2147483647')
 		.on('start', function (cmdline) {
-			console.log("File uploaded; beginning transcode");
+			console.log("Beginning transcode");
 		})
 		.on('progress', function (progress) {
+			percent = progress.percent;
+			timestamp = progress.timemark;
 			if (processing[sessionVars.md5]) {
 				var resp = { md5: sessionVars.md5, timestamp: progress.timemark, name: sessionVars.name };
 				if (progress.percent) {
@@ -210,6 +214,12 @@ var transcode = function (file, sessionVars, engine) {
 			} catch (e) { }
 		})
 		.save(dir + sessionVars.md5);
+
+		setTimeout(function() {
+			if (!percent && !timestamp) {
+				command.kill();
+			}
+		}, 30000);
 };
 
 app.get('/download', function (req, res){
@@ -563,7 +573,7 @@ io.on('connection', function (socket) {
 			try {
 				console.log("Initiating ingest request");
 
-				var md5 = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1];
+				var md5 = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
 				sessionVars.name = md5;
 				md5 = crypto.createHash('md5').update(md5).digest('hex');
 				sessionVars.md5 = md5 ? md5 : "ingested";
@@ -582,19 +592,10 @@ io.on('connection', function (socket) {
 
 				sessionVars.ddate = Date.now().toString();
 				socket.emit('processing', sessionVars.md5);
-				request(sessionVars.ingestLink, function (err, response, body) {
-					if (!err && response.statusCode == 200) {
-						transcode(response, sessionVars);
-					} else {
-						if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
-							processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
-							delete processing[sessionVars.md5];
-						} else {
-							done.push(sessionVars.md5);
-						}
-						console.log('File has been abandoned due to error: ' + sessionVars.md5);
-					}
+				var ingester = request(sessionVars.ingestLink, { timeout: 3500 }, function (err) {
+					console.log("Could not connect to ingest link.");
 				});
+				transcode(ingester, sessionVars);
 			} catch (e) { }
 		}
 	});
