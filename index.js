@@ -594,10 +594,9 @@ io.on('connection', function (socket) {
 
 				sessionVars.ddate = Date.now().toString();
 				socket.emit('processing', sessionVars.md5);
-				var ingester = request(sessionVars.ingestLink, { timeout: 3500 }, function (err) {
+				transcode(request(sessionVars.ingestLink, { timeout: 3500 }, function (err) {
 					console.log("Could not connect to ingest link.");
-				});
-				transcode(ingester, sessionVars);
+				}), sessionVars);
 			} catch (e) { }
 		}
 	});
