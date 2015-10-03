@@ -564,7 +564,9 @@ io.on('connection', function (socket) {
 						transcode(largestFile.createReadStream(), sessionVars, engine);
 					}
 				});
-			} catch (e) { }
+			} catch (e) {
+				console.log("Abandoned torrent due to an error");
+			}
 		}
 	});
 	socket.on('ingest', function(sessionVars) {
