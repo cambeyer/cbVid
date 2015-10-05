@@ -61,6 +61,13 @@ html, body {
   color: green;
 }
 
+.ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -o-text-overflow: ellipsis;
+}
+
 a:link {
     color: black;
 }
