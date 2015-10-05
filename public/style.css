@@ -57,6 +57,10 @@ html, body {
   font-weight: bold;
 }
 
+.newvideo {
+  color: green;
+}
+
 a:link {
     color: black;
 }

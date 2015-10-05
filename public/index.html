@@ -10,6 +10,7 @@
 	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 	<script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
 	<script src="//releases.flowplayer.org/6.0.3/flowplayer.min.js"></script>
+	<script src="//gregpike.net/demos/bootstrap-file-input/bootstrap.file-input.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular-animate.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular-cookies.js"></script>
@@ -56,15 +57,15 @@
 					<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="ingest">Ingest</label>
 				</div>
 				<table class="table">
-					<tr ng-if="type == 'file'">
-						<td><input type="file" id="file" style="width: 200px"></td>
+					<tr ng-init="bootstrap()" ng-show="type == 'file'">
+						<td><input type="file" id="file" title="Browse"></td>
 						<td align="right"><button class="btn btn-default" id="upload" ng-click="upload()">Upload</button></td>
 					</tr>
-					<tr ng-if="type == 'torrent'">
+					<tr ng-show="type == 'torrent'">
 						<td width="100%"><input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link"></td>
 						<td align="right"><button class="btn btn-default" id="torrent" ng-click="sendTorrent()">Torrent</button></td>
 					</tr>
-					<tr ng-if="type == 'ingest'">
+					<tr ng-show="type == 'ingest'">
 						<td width="100%"><input type="text" ng-model="custom.ingest" class="form-control" placeholder="URL"></td>
 						<td align="right"><button class="btn btn-default" id="ingest" ng-click="sendIngest()">Ingest</button></td>
 					</tr>
@@ -130,8 +131,9 @@
 					</div>
 				</div>
 				<div ng-show="!(videoList | isEmpty)" class="col-lg-6">
+					<!--
 					<table class="table table-striped table-hover table-bordered">
-						<tr ng-repeat="video in videoList | orderBy: 'details.original'">
+						<tr ng-repeat="video in videoList | orderBy: 'details.original'" class="animate-repeat">
 							<td ng-class="{'activevideo': video.filename == activeVideo.filename}" ng-bind="video.details.original" ng-click="setVideo(video)"></td>
 							<td align="center">
 								<button ng-if="video.edit" type="button" class="btn btn-default" ng-click="deleteVideo(video.filename)">Delete</button>
@@ -139,8 +141,21 @@
 							</td>
 						</tr>
 					</table>
+					-->
+					<ul class="example-animate-container">
+						<li ng-repeat="video in videoList | orderBy: 'details.original'" style="white-space: nowrap" class="animate-repeat">
+							<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
+								<span class="glyphicon glyphicon-trash"></span>
+							</button>
+							<button ng-if="!video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(video.filename)">
+								<span class="glyphicon glyphicon-remove"></span>
+							</button>
+							<span ng-class="{'activevideo': video.filename == activeVideo.filename, 'newvideo' : video.new }" ng-bind="video.details.original" ng-click="setVideo(video)">
+							</span>
+						</li>
+					</ul>
 				</div>
-				<div ng-show="videoList | isEmpty" style="text-align: center"><h2>It looks like you have not uploaded any videos!  Choose Upload to get started.</h2></div>
+				<div ng-show="fetched && (videoList | isEmpty)" style="text-align: center"><h2>It looks like you have not uploaded any videos!  Choose Upload to get started.</h2></div>
 			</div>
 		</div>
 	</div>

@@ -559,7 +559,7 @@ io.on('connection', function (socket) {
 							}
 						}
 
-						sessionVars.ddate = Date.now().toString();
+						sessionVars.ddate = String(Date.now());
 						socket.emit('processing', sessionVars.md5);
 						transcode(largestFile.createReadStream(), sessionVars, engine);
 					}
@@ -592,7 +592,7 @@ io.on('connection', function (socket) {
 					}
 				}
 
-				sessionVars.ddate = Date.now().toString();
+				sessionVars.ddate = String(Date.now());
 				socket.emit('processing', sessionVars.md5);
 				transcode(request(sessionVars.ingestLink, { timeout: 3500 }, function (err) {
 					console.log("Could not connect to ingest link.");

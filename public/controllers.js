@@ -13,10 +13,11 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	$rootScope.processing = {};
 	$scope.progressModal;
 
-	$scope.videoList = {};
+	$scope.videoList = [];
 
 	$scope.authed = false;
 	$scope.loading = false;
+	$scope.fetched = false;
 
 	$scope.confirmPassword = false;
 
@@ -315,13 +316,55 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	$rootScope.socket.on('list', function (videoList) {
 		$scope.$apply(function () {
 			if (videoList.username == $rootScope.fields.username) {
+				var clearNew = false;
+				for (var i = 0; i < $scope.videoList.length; i++) {
+					$scope.videoList[i].remove = true;
+				}
 				for (var i = 0; i < videoList.edit.length; i++) {
 					videoList.edit[i].edit = true;
+					for (var j = 0; j < $scope.videoList.length; j++) {
+						if (videoList.edit[i].filename == $scope.videoList[j].filename) {
+							$scope.videoList[j] = videoList.edit[i];
+							videoList.edit[i].used = true;
+							break;
+						}
+					}
+					if (!videoList.edit[i].used) {
+						videoList.edit[i].new = true;
+						clearNew = true;
+						$scope.videoList.push(videoList.edit[i]);
+					}
 				}
 				for (var i = 0; i < videoList.view.length; i++) {
 					videoList.view[i].edit = false;
+					for (var j = 0; j < $scope.videoList.length; j++) {
+						if (videoList.view[i].filename == $scope.videoList[j].filename) {
+							$scope.videoList[j] = videoList.view[i];
+							videoList.view[i].used = true;
+							break;
+						}
+					}
+					if (!videoList.view[i].used) {
+						videoList.view[i].new = true;
+						clearNew = true;
+						$scope.videoList.push(videoList.view[i]);
+					}
 				}
-				$scope.videoList = [].concat(videoList.edit).concat(videoList.view);
+				for (var i = 0; i < $scope.videoList.length; i++) {
+					if ($scope.videoList[i].remove) {
+						$scope.videoList.splice(i, 1);
+						i--;
+					}
+				}
+				if (clearNew) {
+					$timeout(function() {
+						for (var i = 0; i < $scope.videoList.length; i++) {
+							delete $scope.videoList[i].new;
+						}
+					}, 2000);
+				}
+				//$scope.videoList = [].concat(videoList.edit).concat(videoList.view);
+				$scope.fetched = true;
 				var found = false;
 				if ($scope.activeVideo) {
 					for (var i = 0; i < $scope.videoList.length; i++) {
@@ -365,6 +408,10 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		event.preventDefault();
 	});
 	*/
+	
+	$scope.bootstrap = function() {
+		$('input[type=file]').bootstrapFileInput();
+	};
 
 	$scope.checkViewers = function () {
 		for (var i = 0; i < $scope.viewers.length; i++) {
