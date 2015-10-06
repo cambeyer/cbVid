@@ -14,7 +14,8 @@ cd ~/cbVid
 #run npm to install all project dependencies
 sudo npm install
 #add the reposotiry for ffmpeg
-sudo add-apt-repository ppa:kirillshkrogalev/ffmpeg-next -y
+#sudo add-apt-repository ppa:kirillshkrogalev/ffmpeg-next -y
+sudo add-apt-repository ppa:mc3man/trusty-media -y
 #update the sources
 sudo apt-get update
 #install ffmpeg without prompting
