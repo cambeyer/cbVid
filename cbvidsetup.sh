@@ -13,13 +13,17 @@ git clone https://github.com/cambeyer/cbVid.git
 cd ~/cbVid
 #run npm to install all project dependencies
 sudo npm install
-#add the reposotiry for ffmpeg
+#add the repository for ffmpeg
 #sudo add-apt-repository ppa:kirillshkrogalev/ffmpeg-next -y
 sudo add-apt-repository ppa:mc3man/trusty-media -y
 #update the sources
 sudo apt-get update
 #install ffmpeg without prompting
 sudo apt-get install -y ffmpeg
+#add the latest fluent-ffmpeg module from github
+git submodule add -f git://github.com/schaermu/node-fluent-ffmpeg.git node_modules/fluent-ffmpeg
+cd node_modules/fluent-ffmpeg/
+sudo npm install
 #add the cloud9 key for authorized login
 sudo echo "KEY HERE" >> ~/.ssh/authorized_keys
 #run the cloud9 installer for hooking in from the interface
