@@ -95,6 +95,14 @@ input[readonly] {
 .flowplayer {
   background-image: none !important;
   background-color: black !important;
+  max-width: 720px;
+  /*max-height: 500px;*/
+}
+
+.fp-engine {
+  width: initial !important;
+  position: initial !important;
+  max-width: 100%;
 }
 
 a:link {
@@ -120,17 +128,6 @@ a:active {
   width: 60px;
   height: 60px;
   border: none;
-}
-
-.flowplayer {
-   max-width: 720px;
-   /*max-height: 500px;*/
-}
-
-.fp-engine {
-  width: initial !important;
-  position: initial !important;
-  max-width: 100%;
 }
 
 .noselect {
