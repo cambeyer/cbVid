@@ -260,8 +260,9 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	$rootScope.socket.on('login', function (srpResponse) {
 		$rootScope.srpClient.setSalt(srpResponse.salt);
 		$rootScope.srpClient.setServerPublicKey(srpResponse.publicKey);
+		$rootScope.fields.secret = $rootScope.srpClient.getSharedKey();
 		try {
-			$rootScope.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $rootScope.srpClient.getSharedKey()).toString(CryptoJS.enc.Utf8);
+			$rootScope.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $rootScope.fields.secret).toString(CryptoJS.enc.Utf8);
 		} catch (e) { }
 		var successBool = (!isNaN($rootScope.sessionNumber) && $rootScope.sessionNumber > 0);
 		//console.log("Successfully established session: " + $rootScope.sessionNumber);
@@ -273,7 +274,11 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 				$rootScope.fields.password = "";
 			} else {
 				$scope.error = false;
+				var now = new Date();
+				var exp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); //24 hour timeout matches what's given on the server
 				$cookies.put('username', $rootScope.fields.username);
+				$cookies.put('sessionNumber', $rootScope.sessionNumber, { expires: exp });
+				$cookies.put('secret', $rootScope.fields.secret, { expires: exp });
 				//$rootScope.fields.password = "";
 
 				$scope.verify();
@@ -391,6 +396,16 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 
 	if ($cookies.get('username')) {
 		$rootScope.fields.username = $cookies.get('username');
+	}
+	if ($cookies.get('sessionNumber')) {
+		$rootScope.sessionNumber = $cookies.get('sessionNumber');
+	}
+	if ($cookies.get('secret')) {
+		$rootScope.fields.secret = $cookies.get('secret');
+		if ($rootScope.fields.username && $rootScope.sessionNumber) {
+			$scope.authed = true;
+			$scope.verify();
+		}
 	}
 })
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
