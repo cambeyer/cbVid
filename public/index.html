@@ -110,7 +110,8 @@
 			</div>
 		</script>
 
-		<loginform ng-if="!authed"></loginform>
+
+		<div ng-if="!authed" loginform class="flex"></div>
 
 		<nav ng-show="authed" class="navbar navbar-default navbar-static-top">
 			<div class="container-fluid">
