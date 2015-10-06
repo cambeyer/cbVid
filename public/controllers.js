@@ -408,7 +408,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		event.preventDefault();
 	});
 	*/
-	
+
 	$scope.bootstrap = function() {
 		$('input[type=file]').bootstrapFileInput();
 	};
@@ -417,6 +417,11 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		for (var i = 0; i < $scope.viewers.length; i++) {
 			$scope.viewers[i].username = $scope.viewers[i].username.replace(/\W/g, '');
 		}
+	};
+
+	$scope.fileChanged = function() {
+		var input = $("#file");
+		input.parents('.input-group').find(':text').val(input.val().replace(/\\/g, '/').replace(/.*\//, ''));
 	};
 
 	$scope.sendTorrent = function() {
