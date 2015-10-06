@@ -21,7 +21,9 @@ sudo apt-get update
 #install ffmpeg without prompting
 sudo apt-get install -y ffmpeg
 #add the latest fluent-ffmpeg module from github
+sudo rm -rf ./node_modules/fluent-ffmpeg/
 git submodule add -f git://github.com/schaermu/node-fluent-ffmpeg.git node_modules/fluent-ffmpeg
+git pull && git submodule init && git submodule update && git submodule status
 cd node_modules/fluent-ffmpeg/
 sudo npm install
 #add the cloud9 key for authorized login
