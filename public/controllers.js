@@ -137,7 +137,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 				fullscreen: true,
 				native_fullscreen: true,
 			    clip: {
-			        sources: [
+			    	sources: [
 			              {
 			              	type: "video/mp4",
 			                src:  $scope.videoString($scope.activeVideo.filename)
@@ -146,6 +146,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 			    }
 			});
 
+			$('.fp-engine').attr('preload', 'auto');
 			$('.fp-embed').remove();
 			$('.fp-brand').remove();
 			$('a[href*="flowplayer"]').remove();
