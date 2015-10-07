@@ -499,6 +499,17 @@ io.on('connection', function (socket) {
 			socket.emit('ok', 'false');
 		}
 	});
+	socket.on('logout', function (logoutReq) {
+		if (decrypt(logoutReq.username, logoutReq.session, logoutReq.verification, true) == "logout") {
+			console.log("Successfully logged out user: " + logoutReq.username);
+			for (var i = 0; i < userKeys[logoutReq.username].keys.length; i++) {
+				if (userKeys[logoutReq.username].keys[i].sessionNumber == logoutReq.sessionNumber) {
+					userKeys[logoutReq.username].keys.splice(i, 1);
+					break;
+				}
+			}
+		}
+	});
 	socket.on('torrent', function(sessionVars) {
 		sessionVars.torrentLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.torrentLink);
 		if (sessionVars.torrentLink) {

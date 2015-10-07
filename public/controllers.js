@@ -45,6 +45,11 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	});
 
 	$scope.logout = function () {
+		var logoutReq = {};
+		logoutReq['username'] = $rootScope.fields.username;
+		logoutReq['session'] = $rootScope.sessionNumber;
+		logoutReq['verification'] = EncryptService.encrypt('logout');
+		$rootScope.socket.emit('logout', logoutReq)
 		$cookies.remove('username');
 		$window.location.reload();
 	};
@@ -240,21 +245,25 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 	});
 
 	$scope.verify = function() {
-		var challenge = {};
-		challenge.username = $rootScope.fields.username;
-		challenge.sessionNumber = $rootScope.sessionNumber;
-		challenge.encryptedPhrase = EncryptService.encrypt('client');
-		$rootScope.socket.emit('verify', challenge);
+		if ($rootScope.fields.username && $rootScope.sessionNumber) {
+			var challenge = {};
+			challenge.username = $rootScope.fields.username;
+			challenge.sessionNumber = $rootScope.sessionNumber;
+			challenge.encryptedPhrase = EncryptService.encrypt('client');
+			$rootScope.socket.emit('verify', challenge);
+		}
 	};
 
 	$rootScope.socket.on('ok', function(successBool) {
-		if (successBool == 'false') {
-			alert("Your session has expired.  Please log in again.");
-			$cookies.remove('sessionNumber');
-			$cookies.remove('secret');
-			$window.location.reload();
-		} else {
-			$rootScope.sendSubscriptions();
+		if ($scope.authed) {
+			if (successBool == 'false') {
+				alert("Your session has expired.  Please log in again.");
+				$cookies.remove('sessionNumber');
+				$cookies.remove('secret');
+				$window.location.reload();
+			} else {
+				$rootScope.sendSubscriptions();
+			}
 		}
 	});
 
