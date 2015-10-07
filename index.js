@@ -343,14 +343,16 @@ var createSRPResponse = function (socket, user) {
 
 var getKey = function (username, sessionNumber) {
 	var key;
-	for (var i = 0; i < userKeys[username].keys.length; i++) {
-		if (userKeys[username].keys[i].sessionNumber < Date.now() - 86400000) { //24 hour timeout
-			userKeys[username].keys.splice(i, 1);
-			i--;
-			continue;
-		}
-		if (!key && userKeys[username].keys[i].sessionNumber == sessionNumber) {
-			key = userKeys[username].keys[i];
+	if (userKeys[username]) {
+		for (var i = 0; i < userKeys[username].keys.length; i++) {
+			if (userKeys[username].keys[i].sessionNumber < Date.now() - 86400000) { //24 hour timeout
+				userKeys[username].keys.splice(i, 1);
+				i--;
+				continue;
+			}
+			if (!key && userKeys[username].keys[i].sessionNumber == sessionNumber) {
+				key = userKeys[username].keys[i];
+			}
 		}
 	}
 	return key;
@@ -508,14 +510,14 @@ io.on('connection', function (socket) {
 		}
 	});
 	socket.on('verify', function (challenge) {
-		if (userKeys[challenge.username]) {
-			if (decrypt(challenge.username, challenge.sessionNumber, challenge.encryptedPhrase, true) == "client") {
-				console.log("Successfully logged in user: " + challenge.username);
-				getKey(challenge.username, challenge.sessionNumber).verified = true;
-				sendList(challenge.username, socket);
-			} else {
-				console.log("Failed login for user: " + challenge.username);
-			}
+		if (decrypt(challenge.username, challenge.sessionNumber, challenge.encryptedPhrase, true) == "client") {
+			console.log("Successfully logged in user: " + challenge.username);
+			getKey(challenge.username, challenge.sessionNumber).verified = true;
+			socket.emit('ok', 'true');
+			sendList(challenge.username, socket);
+		} else {
+			console.log("Failed login for user: " + challenge.username);
+			socket.emit('ok', 'false');
 		}
 	});
 	socket.on('keepalive', function(pingObj) {

@@ -79,7 +79,6 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		console.log("Reconnect");
 		$scope.$apply(function () {
 			$scope.verify();
-			$rootScope.sendSubscriptions();
 		});
 	});
 
@@ -256,6 +255,17 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		challenge.encryptedPhrase = EncryptService.encrypt('client');
 		$rootScope.socket.emit('verify', challenge);
 	};
+
+	$rootScope.socket.on('ok', function(successBool) {
+		if (successBool == 'false') {
+			alert("Your session has expired.  Please log in again.");
+			$cookies.remove('sessionNumber');
+			$cookies.remove('secret');
+			$window.location.reload();
+		} else {
+			$rootScope.sendSubscriptions();
+		}
+	});
 
 	$rootScope.socket.on('login', function (srpResponse) {
 		$rootScope.srpClient.setSalt(srpResponse.salt);
