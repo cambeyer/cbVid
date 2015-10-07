@@ -2,8 +2,8 @@
 angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'cbVidApp.services', 'ngAnimate']);
 
 //main Angular module
-angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $cookies, $document, $window, $sce, $modal, EncryptService) {
-
+angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $document, $window, $sce, $modal, $localStorage, EncryptService) {
+	$scope.$storage = $localStorage;
 	$scope.activeVideo;
 
 	$scope.viewers = [];
@@ -50,7 +50,7 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		logoutReq['session'] = $rootScope.sessionNumber;
 		logoutReq['verification'] = EncryptService.encrypt('logout');
 		$rootScope.socket.emit('logout', logoutReq)
-		$cookies.remove('username');
+		$localStorage.$reset();
 		$window.location.reload();
 	};
 
@@ -258,12 +258,20 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		if ($scope.authed) {
 			if (successBool == 'false') {
 				alert("Your session has expired.  Please log in again.");
-				$cookies.remove('sessionNumber');
-				$cookies.remove('secret');
+				$localStorage.$reset({
+					username: $scope.fields.username
+				});
 				$window.location.reload();
 			} else {
 				$rootScope.sendSubscriptions();
 			}
+		}
+	});
+
+	$rootScope.socket.on('logout', function(username) {
+		if ($rootScope.fields.username == username) {
+			$localStorage.$reset();
+			$window.location.reload();
 		}
 	});
 
@@ -286,9 +294,9 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 				$scope.error = false;
 				var now = new Date();
 				var exp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); //24 hour timeout matches what's given on the server
-				$cookies.put('username', $rootScope.fields.username);
-				$cookies.put('sessionNumber', $rootScope.sessionNumber, { expires: exp });
-				$cookies.put('secret', $rootScope.fields.secret, { expires: exp });
+				$scope.$storage.username = $rootScope.fields.username;
+				$scope.$storage.sessionNumber = $rootScope.sessionNumber; //expire
+				$scope.$storage.secret = $rootScope.fields.secret; //expire
 				//$rootScope.fields.password = "";
 
 				$scope.verify();
@@ -404,14 +412,14 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 
 	//Perform after all of the functions have been defined
 
-	if ($cookies.get('username')) {
-		$rootScope.fields.username = $cookies.get('username');
+	if ($scope.$storage.username) {
+		$rootScope.fields.username = $scope.$storage.username;
 	}
-	if ($cookies.get('sessionNumber')) {
-		$rootScope.sessionNumber = $cookies.get('sessionNumber');
+	if ($scope.$storage.sessionNumber) {
+		$rootScope.sessionNumber = $scope.$storage.sessionNumber;
 	}
-	if ($cookies.get('secret')) {
-		$rootScope.fields.secret = $cookies.get('secret');
+	if ($scope.$storage.secret) {
+		$rootScope.fields.secret = $scope.$storage.secret;
 		if ($rootScope.fields.username && $rootScope.sessionNumber) {
 			$scope.authed = true;
 			$scope.verify();

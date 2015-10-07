@@ -233,7 +233,7 @@ app.get('/download', function (req, res){
 				res.end("Could not read file");
 				return;
 			}
-			var range = req.headers.range || "";    
+			var range = req.headers.range || "";
 			var total = stats.size;
 			if (range) {
 				var parts = range.replace(/bytes=/, "").split("-");
@@ -243,21 +243,21 @@ app.get('/download', function (req, res){
 				var end = partialend ? parseInt(partialend, 10) : total-1;
 				var chunksize = (end-start)+1;
 				//console.log("Request for partial file: " + filename + "; size: " + (total / Math.pow(2, 20)).toFixed(1) + " MB");
-				res.writeHead(206, { 
-					"Content-Range": "bytes " + start + "-" + end + "/" + total, 
-					"Accept-Ranges": "bytes", 
+				res.writeHead(206, {
+					"Content-Range": "bytes " + start + "-" + end + "/" + total,
+					"Accept-Ranges": "bytes",
 					"Content-Length": chunksize,
 					"Content-Type": "video/mp4"
 				});
 			} else {
-				res.writeHead(200, { 
-					"Accept-Ranges": "bytes", 
-					"Content-Length": stats.size, 
-					"Content-Type": "video/mp4" 
+				res.writeHead(200, {
+					"Accept-Ranges": "bytes",
+					"Content-Length": stats.size,
+					"Content-Type": "video/mp4"
 				});
 			}
 			var readStream = fs.createReadStream(file, {start:start, end:end});
-			res.openedFile = readStream; 
+			res.openedFile = readStream;
 			readStream.pipe(res);
 			res.on('close', function(){
 				res.openedFile.unpipe(this);
@@ -471,10 +471,11 @@ io.on('connection', function (socket) {
 	});
 	socket.on('logout', function (logoutReq) {
 		if (decrypt(logoutReq.username, logoutReq.session, logoutReq.verification, true) == "logout") {
-			console.log("Successfully logged out user: " + logoutReq.username);
 			for (var i = 0; i < userKeys[logoutReq.username].keys.length; i++) {
-				if (userKeys[logoutReq.username].keys[i].sessionNumber == logoutReq.sessionNumber) {
+				if (userKeys[logoutReq.username].keys[i].sessionNumber == logoutReq.session) {
 					userKeys[logoutReq.username].keys.splice(i, 1);
+					io.emit('logout', logoutReq.username);
+					console.log("Successfully logged out user: " + logoutReq.username);
 					break;
 				}
 			}
