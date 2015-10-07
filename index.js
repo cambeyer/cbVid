@@ -226,74 +226,44 @@ app.get('/download', function (req, res){
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
 	if (filename) {
 		var file = path.resolve(dir, filename);
-		if (req.headers.range) {
-			var range = req.headers.range;
-			var positions = range.replace(/bytes=/, "").split("-");
-			var start = parseInt(positions[0], 10);
-
-			fs.stat(file, function (err, stats) {
-				if (err) {
-					deleteVideo(filename);
-					return;
-				}
-				var total = stats.size;
+		fs.stat(file, function(err, stats) {
+			if (err) {
+				deleteVideo(filename);
+				res.writeHead(404, {"Content-Type":"text/plain"});
+				res.end("Could not read file");
+				return;
+			}
+			var range = req.headers.range || "";    
+			var total = stats.size;
+			if (range) {
+				var parts = range.replace(/bytes=/, "").split("-");
+				var partialstart = parts[0];
+				var partialend = parts[1];
+				var start = parseInt(partialstart, 10);
+				var end = partialend ? parseInt(partialend, 10) : total-1;
+				var chunksize = (end-start)+1;
 				//console.log("Request for partial file: " + filename + "; size: " + (total / Math.pow(2, 20)).toFixed(1) + " MB");
-				var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-
-				var chunksize = (end - start) + 1;
-
-				res.writeHead(206, {
-					"Content-Range": "bytes " + start + "-" + end + "/" + total,
-					"Accept-Ranges": "bytes",
+				res.writeHead(206, { 
+					"Content-Range": "bytes " + start + "-" + end + "/" + total, 
+					"Accept-Ranges": "bytes", 
 					"Content-Length": chunksize,
 					"Content-Type": "video/mp4"
 				});
-
-				try {
-					var stream = fs.createReadStream(file, { start: start, end: end })
-					.on("open", function () {
-						stream.pipe(res);
-					}).on("error", function (err) {
-						try {
-							res.end(err);
-						} catch (e) {
-							console.log("Error streaming out.");
-						}
-					});
-				} catch (e) {
-					console.log("Error streaming out.");
-				}
-			});
-		} else {
-			fs.stat(file, function (err, stats) {
-				if (err) {
-					deleteVideo(filename);
-					return;
-				}
-				var total = stats.size;
-				//console.log("Request for whole file: " + filename + "; size: " + (total / Math.pow(2, 20)).toFixed(1) + " MB");
-
-				res.writeHead(200, {
-					'Content-Length': total,
-					"Accept-Ranges": "bytes",
-					'Content-Type': 'video/mp4',
+			} else {
+				res.writeHead(200, { 
+					"Accept-Ranges": "bytes", 
+					"Content-Length": stats.size, 
+					"Content-Type": "video/mp4" 
 				});
-				try {
-					var stream = fs.createReadStream(file)
-					.on("open", function () {
-						stream.pipe(res);
-					}).on("error", function (err) {
-						try {
-							res.end(err);
-						} catch (e) {
-							console.log("Error streaming out.");
-						}
-					});
-				} catch (e) {
-					console.log("Error streaming out.");
-				}
+			}
+			var readStream = fs.createReadStream(file, {start:start, end:end});
+			res.openedFile = readStream; 
+			readStream.pipe(res);
+			res.on('close', function(){
+				res.openedFile.unpipe(this);
+				fs.close(this.openedFile.fd);
 			});
-		}
+		});
 	} else {
 		res.sendStatus(401);
 	}
