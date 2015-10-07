@@ -148,7 +148,7 @@
 							<button ng-if="!video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(video.filename)">
 								<span class="glyphicon glyphicon-remove"></span>
 							</button>
-							<span ng-class="{'activevideo': video.filename == activeVideo.filename, 'newvideo' : video.new }" ng-bind="video.details.original" ng-click="setVideo(video)">
+							<span style="cursor: pointer" ng-class="{'activevideo': video.filename == activeVideo.filename, 'newvideo' : video.new }" ng-bind="video.details.original" ng-click="setVideo(video)">
 							</span>
 						</li>
 					</ul>
