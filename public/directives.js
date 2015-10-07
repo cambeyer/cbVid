@@ -47,7 +47,7 @@ angular.module('cbVidApp.directives', [])
 						'</div>' +
 					'</div>' +
 					'<div class="row" style="margin-top: 20px">' +
-						'<input ng-show="!loading" class="mySubmit" type="submit" value="">' +
+						'<input ng-if="!loading" class="mySubmit" type="submit" value="">' +
 						'<span ng-show="loading"><img src="loading.gif" style="max-width: 60px"></span>' +
 					'</div>' +
 				'</div>' +
