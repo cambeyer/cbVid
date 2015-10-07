@@ -154,15 +154,6 @@ angular.module('cbVidApp.controllers', ['ngCookies', 'ui.bootstrap']).controller
 		}
 	};
 
-	$interval(function() {
-		if ($scope.videoFile && $rootScope.sessionNumber) {
-			var pingObj = {};
-			pingObj.hashed = CryptoJS.MD5($scope.videoFile + $rootScope.sessionNumber).toString();
-			pingObj.value = btoa(EncryptService.encrypt(Date.now().toString()).toString());
-			$rootScope.socket.emit('keepalive', pingObj);
-		}
-	}, 1000);
-
 	$scope.login = function () {
 		if ($rootScope.fields.username && $rootScope.fields.password) {
 			$scope.authed = false;

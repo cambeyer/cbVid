@@ -27,7 +27,6 @@ var processing = {};
 var done = [];
 
 var userKeys = {};
-var verifiers = {};
 
 var playing = {};
 
@@ -225,27 +224,7 @@ var transcode = function (file, sessionVars, engine) {
 app.get('/download', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
-	var hashed = crypto.createHash('md5').update(filename + req.query.session).digest('hex');
-	var verifier = verifiers[hashed] ? parseInt(decrypt(req.query.username, req.query.session, atob(verifiers[hashed])), 10): 0;
 	if (filename) {
-
-		if (!playing[encryptedName]) {
-			playing[encryptedName] = {};
-			playing[encryptedName].verifier = -1;
-		}
-		if (verifier > playing[encryptedName].verifier) {
-			playing[encryptedName].verifier = verifier;
-			playing[encryptedName].lastVerified = Date.now();
-		} else {
-			if (verifier < playing[encryptedName].verifier || Date.now() - playing[encryptedName].lastVerified > 5000) {
-				//if we haven't received a range request with an updated verifier in the last 5 seconds, stop the request
-				res.sendStatus(401);
-				return;
-			} else {
-				//it's a request with a recent verification so we let it through
-			}
-		}
-
 		var file = path.resolve(dir, filename);
 		if (req.headers.range) {
 			var range = req.headers.range;
@@ -519,9 +498,6 @@ io.on('connection', function (socket) {
 			console.log("Failed login for user: " + challenge.username);
 			socket.emit('ok', 'false');
 		}
-	});
-	socket.on('keepalive', function(pingObj) {
-		verifiers[pingObj.hashed] = pingObj.value;
 	});
 	socket.on('torrent', function(sessionVars) {
 		sessionVars.torrentLink = decrypt(sessionVars.username, sessionVars.session, sessionVars.torrentLink);
