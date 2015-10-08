@@ -474,7 +474,10 @@ io.on('connection', function (socket) {
 			for (var i = 0; i < userKeys[logoutReq.username].keys.length; i++) {
 				if (userKeys[logoutReq.username].keys[i].sessionNumber == logoutReq.session) {
 					userKeys[logoutReq.username].keys.splice(i, 1);
-					io.emit('logout', logoutReq.username);
+					var resp = {};
+					resp.username = logoutReq.username;
+					resp.session = logoutReq.session;
+					io.emit('logout', resp);
 					console.log("Successfully logged out user: " + logoutReq.username);
 					break;
 				}

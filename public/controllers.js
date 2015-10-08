@@ -259,7 +259,7 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 			if (successBool == 'false') {
 				alert("Your session has expired.  Please log in again.");
 				$localStorage.$reset({
-					username: $scope.fields.username
+					username: $rootScope.fields.username
 				});
 				$window.location.reload();
 			} else {
@@ -268,8 +268,8 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 		}
 	});
 
-	$rootScope.socket.on('logout', function(username) {
-		if ($rootScope.fields.username == username) {
+	$rootScope.socket.on('logout', function(msg) {
+		if ($rootScope.fields.username == msg.username && $rootScope.sessionNumber == msg.session) {
 			$localStorage.$reset();
 			$window.location.reload();
 		}
