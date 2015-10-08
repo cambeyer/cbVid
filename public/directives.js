@@ -31,7 +31,7 @@ angular.module('cbVidApp.directives', [])
 					'<div class="row">' +
 						'<div class="form-group">' +
 							'<label for="username">Username:</label>' +
-							'<input type="text" class="form-control" id="username" ng-change="resetControls(this)" ng-model="fields.username" ng-trim="false" maxlength="20" placeholder="Username">' +
+							'<input type="text" class="form-control" id="username" ng-change="resetControls(this)" ng-model="$storage.username" ng-trim="false" maxlength="20" placeholder="Username">' +
 						'</div>' +
 					'</div>' +
 					'<div class="row">' +
@@ -134,139 +134,41 @@ directive('dragAndDrop', function ($rootScope) {
 						return;
 					}
 					//if there are already files that have been dropped onto the interface, then alert the user they will be overwritten
-					if ($rootScope.fields.droppedFiles.length > 0) {
+					if ($rootScope.$storage.droppedFiles.length > 0) {
 						go = confirm("This will overwrite your previously dropped files.");
 					}
 					//if the user accepted the overwrite or there was no conflict, parse the files and reflect it in the interface
 					if (go) {
 						$rootScope.$apply(function () {
 							//clear the old files that had been dropped
-							$rootScope.fields.droppedFiles = [];
+							$rootScope.$storage.droppedFiles = [];
 							var dropped = e.originalEvent.dataTransfer.files; //no originalEvent if jQuery script is included after angular
 							for (var i in dropped) {
 								//if the file has a type or a size that isn't a multiple of 4096 or is larger than 4096*3, then it is a file and not a folder
 								//we don't want to handle folders as that functionality is not available in any browsers outside of Chrome
 								if (dropped[i].type || (dropped[i].size && (dropped[i].size % 4096 !== 0 || dropped[i].size / 4096 > 3))) {
-									$rootScope.fields.droppedFiles.push(dropped[i]);
+									$rootScope.$storage.droppedFiles.push(dropped[i]);
 								}
 							}
-							if ($rootScope.fields.droppedFiles.length > 0) {
+							if ($rootScope.$storage.droppedFiles.length > 0) {
 								//if we're not in the upload pane already then open it and overwrite the folder
-								if ($rootScope.fields.upload == false) {
-									$rootScope.fields.upload = true;
+								if ($rootScope.$storage.upload == false) {
+									$rootScope.$storage.upload = true;
 									if ($scope.path && $scope.path !== "") {
-										$rootScope.fields.folderName = $scope.path.substring(0, $scope.path.length - 1);
+										$rootScope.$storage.folderName = $scope.path.substring(0, $scope.path.length - 1);
 									} else {
-										$rootScope.fields.folderName = "/";
+										$rootScope.$storage.folderName = "/";
 									}
 								} else {
 									//if the upload pane is already open and we drag-dropped onto no path, keep what was there... but if we dropped on a custom folder, take that instead
 									if ($scope.path && $scope.path !== "") {
-										$rootScope.fields.folderName = $scope.path.substring(0, $scope.path.length - 1);
+										$rootScope.$storage.folderName = $scope.path.substring(0, $scope.path.length - 1);
 									}
 								}
 							}
 						});
 					}
 				}
-			});
-		}
-	};
-}).
-directive('uploadForm', function ($rootScope) {
-	//directive that controls the upload form
-	return {
-		scope: false,
-		restrict: 'A',
-		template: '' +
-			'<table ng-style="{backgroundColor : (fields.loading && \'#FF9999\') || \'transparent\'}" style="width: 330px; padding: 15px; border: 1px solid #909090" cellpadding="10" cellspacing="0" border="0" align="center">' +
-				'<tr>' +
-					'<td valign="top">Folder:</td>' +
-					'<td>' +
-						'<span ng-bind="fields.folderName | humanreadable"></span>' +
-						'<input type="text" ng-show="false" id="folder" ng-model="fields.folderName" name="folder">' +
-					'</td>' +
-				'</tr>' +
-				'<tr>' +
-					'<td valign="top">File(s):</td>' +
-					'<td>' +
-					//ng-show="!(fields.droppedFiles.length > 0) || this.value !== \'\'"
-						'<input style="width: 100%" id="file" ng-disabled="fields.loading" type="file" name="{{activeClass}}"  ng-required="!(fields.droppedFiles.length > 0)" multiple="multiple">' +
-						'<p><span ng-if="fields.droppedFiles.length > 0" style="color: red"><b>+</b></span></p>' +
-						'<div style="width: 100%" ng-show="fields.droppedFiles.length"><span style="color: red"><b>{{fields.droppedFiles.length}} file(s) drag/dropped</b> <img style="float: right; max-height: 20px" ng-src="x.png" ng-click="fields.droppedFiles = []"></span></div>' +
-					'</td>' +
-				'</tr>' +
-				'<tr>' +
-					'<td valign="top" align="left" colspan="2">' +
-						'<label><input ng-model="futureReveal" ng-disabled="fields.loading" type="checkbox"></input> Future Reveal</label><br />' +
-						'<p>' +
-							'<div ng-show="futureReveal"><span style="padding-right: 10px">Date: </span><input style="width: 170px" ng-required="futureReveal" ng-model="revealTime" id="datetimepicker" type="text" name="reveal"></input><script type="text/javascript">$("#datetimepicker").AnyTime_picker({' +
-								'format: \'%m/%e/%Y %h:%i:%s %p\',' +
-								'earliest: new Date(),' +
-							'});</script></div>' +
-						'</p>' +
-					'</td>' +
-				'</tr>' +
-				'<tr>' +
-					'<td colspan="2" align="center" style="padding-top: 20px">' +
-						'<input style="width: 60%; height: 40px" type="submit" ng-disabled="fields.loading" value="Submit"></input>' +
-					'</td>' +
-				'</tr>' +
-			'</table>',
-		link: function ($scope, elem, attr) {
-			//when the form is submitted, take over that event
-			elem.bind('submit', function (e) {
-				//$(elem).children('table').css('background-color', '#FF9999');
-				e.preventDefault();
-				$scope.$apply(function () {
-					if ($scope.futureReveal) {
-						$scope.revealTime = new Date($scope.revealTime).getTime();
-					} else {
-						$scope.revealTime = "";
-					}
-				});
-				var oData = new FormData(this);
-				$scope.$apply(function () {
-					$scope.futureReveal = false;
-				});
-				$rootScope.$apply(function () {
-					$rootScope.fields.loading = true; //must be applied after the form data is grabbed since disabling the file input keeps it from actually uploading
-				});
-				for (var i = 0; i < $rootScope.fields.droppedFiles.length; i++)
-				{
-					//loop through all of the dropped files and append them to the formdata
-					oData.append($scope.activeClass, $rootScope.fields.droppedFiles[i]);
-				}
-				$rootScope.$apply(function () {
-					//clear out the dropped files before uploading this batch so if the user drops more on, those can be queued up for the next round after this is finished
-					$rootScope.fields.droppedFiles = [];
-				});
-				//we're sending the data to the server using XMLHttpRequest
-				//uploading to the /upload endpoint
-				var oReq = new XMLHttpRequest();
-				oReq.open("post", "upload", true);
-				oReq.onload = function (oEvent) {
-					if (oReq.status == 200) {
-						//$(elem).children('table').css('background-color', 'transparent');
-						$rootScope.$apply(function () {
-							$rootScope.fields.loading = false;
-						});
-						try {
-							if ($rootScope.fields.droppedFiles.length == 0) {
-								$rootScope.$apply(function () {
-									$rootScope.fields.upload = false;
-								});
-							}
-							document.getElementById('file').value = '';
-							$scope.revealTime = "";
-						} catch (e) {}
-					} else {
-						alert("There was an error uploading your file");
-					}
-				};
-				//send the data
-				oReq.send(oData);
-
 			});
 		}
 	};

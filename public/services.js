@@ -5,7 +5,7 @@ angular.module('cbVidApp.services', [])
 	this.encrypt = function (text) {
 		if (!this.encryptedPhrases[text]) {
 		    /*global CryptoJS*/
-			this.encryptedPhrases[text] = CryptoJS.AES.encrypt(text, $rootScope.fields.secret).toString();
+			this.encryptedPhrases[text] = CryptoJS.AES.encrypt(text, $rootScope.$storage.secret).toString();
 		}
 		return this.encryptedPhrases[text];
 	};

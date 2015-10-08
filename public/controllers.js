@@ -3,7 +3,7 @@ angular.module('cbVidApp', ['cbVidApp.controllers', 'cbVidApp.directives', 'cbVi
 
 //main Angular module
 angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller('mainController', function ($scope, $rootScope, $interval, $timeout, $document, $window, $sce, $modal, $localStorage, EncryptService) {
-	$scope.$storage = $localStorage;
+	$rootScope.$storage = $localStorage;
 	$scope.activeVideo;
 
 	$scope.viewers = [];
@@ -24,11 +24,9 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$rootScope.srpClient;
 	$scope.srpObj = {};
 
-	$rootScope.sessionNumber = 0;
 	$scope.videoFile;
 
 	$rootScope.fields = {
-		username: "",
 		password: "",
 		passwordConfirm: ""
 	};
@@ -39,15 +37,15 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 
 	$document.ready(function (){
 		$('#username').focus();
-		if ($rootScope.fields.username) {
+		if ($rootScope.$storage.username) {
 			$('#password').focus();
 		}
 	});
 
 	$scope.logout = function () {
 		var logoutReq = {};
-		logoutReq['username'] = $rootScope.fields.username;
-		logoutReq['session'] = $rootScope.sessionNumber;
+		logoutReq['username'] = $rootScope.$storage.username;
+		logoutReq['session'] = $rootScope.$storage.sessionNumber;
 		logoutReq['verification'] = EncryptService.encrypt('logout');
 		$rootScope.socket.emit('logout', logoutReq)
 		$localStorage.$reset();
@@ -96,21 +94,21 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$scope.resetControls = function () {
 		$scope.confirmPassword = false;
 		$rootScope.fields.passwordConfirm = "";
-		$rootScope.fields.username = $rootScope.fields.username.replace(/\W/g, '');
+		$rootScope.$storage.username = $rootScope.$storage.username.replace(/\W/g, '');
 	};
 
 	$scope.videoString = function (videoFile) {
-		if ($rootScope.fields.username && $rootScope.sessionNumber) {
+		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			$scope.videoFile = videoFile;
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./download?" + "username=" + $rootScope.fields.username + "&session=" + $rootScope.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
+			return $sce.trustAsResourceUrl("./download?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
 	};
 
 	$scope.deleteVideo = function (filename) {
 		var delReq = {};
-		delReq['username'] = $rootScope.fields.username;
-		delReq['session'] = $rootScope.sessionNumber;
+		delReq['username'] = $rootScope.$storage.username;
+		delReq['session'] = $rootScope.$storage.sessionNumber;
 		delReq['file'] = EncryptService.encrypt(filename);
 		if (confirm("Do you really want to delete this video?")) {
 			$rootScope.socket.emit('delete', delReq);
@@ -119,8 +117,8 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 
 	$scope.removeMe = function (filename) {
 		var remReq = {};
-		remReq['username'] = $rootScope.fields.username;
-		remReq['session'] = $rootScope.sessionNumber;
+		remReq['username'] = $rootScope.$storage.username;
+		remReq['session'] = $rootScope.$storage.sessionNumber;
 		remReq['file'] = EncryptService.encrypt(filename);
 		if (confirm("Do you really want to remove your access to this video?")) {
 			$rootScope.socket.emit('remove', remReq);
@@ -160,17 +158,17 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	};
 
 	$scope.login = function () {
-		if ($rootScope.fields.username && $rootScope.fields.password) {
+		if ($rootScope.$storage.username && $rootScope.fields.password) {
 			$scope.authed = false;
 			$scope.loading = true;
-			$rootScope.sessionNumber = 0;
+			$rootScope.$storage.sessionNumber = 0;
 			if (!$scope.confirmPassword) {
 				/*global jsrp*/
 				$rootScope.srpClient = new jsrp.client();
 				/*global CryptoJS*/
-				$rootScope.srpClient.init({ username: $rootScope.fields.username, password: CryptoJS.MD5($rootScope.fields.password).toString() }, function () {
+				$rootScope.srpClient.init({ username: $rootScope.$storage.username, password: CryptoJS.MD5($rootScope.fields.password).toString() }, function () {
 					$scope.srpObj = {};
-					$scope.srpObj.username = $rootScope.fields.username;
+					$scope.srpObj.username = $rootScope.$storage.username;
 					$scope.srpObj.publicKey = $rootScope.srpClient.getPublicKey();
 					$rootScope.socket.emit('login', $scope.srpObj);
 				});
@@ -198,8 +196,8 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$scope.uploadFile = function () {
 		if (document.getElementById("file").files.length > 0) {
 			var oData = new FormData();
-			oData.append("username", $rootScope.fields.username);
-			oData.append("session", $rootScope.sessionNumber);
+			oData.append("username", $rootScope.$storage.username);
+			oData.append("session", $rootScope.$storage.sessionNumber);
 			oData.append("date", EncryptService.encrypt(Date.now().toString()));
 			oData.append("viewers", JSON.stringify($scope.viewers));
 			$scope.viewers = [];
@@ -245,10 +243,10 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	});
 
 	$scope.verify = function() {
-		if ($rootScope.fields.username && $rootScope.sessionNumber) {
+		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			var challenge = {};
-			challenge.username = $rootScope.fields.username;
-			challenge.sessionNumber = $rootScope.sessionNumber;
+			challenge.username = $rootScope.$storage.username;
+			challenge.sessionNumber = $rootScope.$storage.sessionNumber;
 			challenge.encryptedPhrase = EncryptService.encrypt('client');
 			$rootScope.socket.emit('verify', challenge);
 		}
@@ -259,7 +257,7 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 			if (successBool == 'false') {
 				alert("Your session has expired.  Please log in again.");
 				$localStorage.$reset({
-					username: $rootScope.fields.username
+					username: $rootScope.$storage.username
 				});
 				$window.location.reload();
 			} else {
@@ -269,7 +267,7 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	});
 
 	$rootScope.socket.on('logout', function(msg) {
-		if ($rootScope.fields.username == msg.username && $rootScope.sessionNumber == msg.session) {
+		if ($rootScope.$storage.username == msg.username && $rootScope.$storage.sessionNumber == msg.session) {
 			$localStorage.$reset();
 			$window.location.reload();
 		}
@@ -278,12 +276,12 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$rootScope.socket.on('login', function (srpResponse) {
 		$rootScope.srpClient.setSalt(srpResponse.salt);
 		$rootScope.srpClient.setServerPublicKey(srpResponse.publicKey);
-		$rootScope.fields.secret = $rootScope.srpClient.getSharedKey();
+		$rootScope.$storage.secret = $rootScope.srpClient.getSharedKey();
 		try {
-			$rootScope.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $rootScope.fields.secret).toString(CryptoJS.enc.Utf8);
+			$rootScope.$storage.sessionNumber = CryptoJS.AES.decrypt(srpResponse.encryptedPhrase, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8);
 		} catch (e) { }
-		var successBool = (!isNaN($rootScope.sessionNumber) && $rootScope.sessionNumber > 0);
-		//console.log("Successfully established session: " + $rootScope.sessionNumber);
+		var successBool = (!isNaN($rootScope.$storage.sessionNumber) && $rootScope.$storage.sessionNumber > 0);
+		//console.log("Successfully established session: " + $rootScope.$storage.sessionNumber);
 		$scope.$apply(function () {
 			$scope.loading = false;
 			$scope.authed = successBool;
@@ -292,11 +290,6 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 				$rootScope.fields.password = "";
 			} else {
 				$scope.error = false;
-				var now = new Date();
-				var exp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); //24 hour timeout matches what's given on the server
-				$scope.$storage.username = $rootScope.fields.username;
-				$scope.$storage.sessionNumber = $rootScope.sessionNumber; //expire
-				$scope.$storage.secret = $rootScope.fields.secret; //expire
 				//$rootScope.fields.password = "";
 
 				$scope.verify();
@@ -339,7 +332,7 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 
 	$rootScope.socket.on('list', function (videoList) {
 		$scope.$apply(function () {
-			if (videoList.username == $rootScope.fields.username) {
+			if (videoList.username == $rootScope.$storage.username) {
 				var clearNew = false;
 				for (var i = 0; i < $scope.videoList.length; i++) {
 					$scope.videoList[i].remove = true;
@@ -412,18 +405,9 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 
 	//Perform after all of the functions have been defined
 
-	if ($scope.$storage.username) {
-		$rootScope.fields.username = $scope.$storage.username;
-	}
-	if ($scope.$storage.sessionNumber) {
-		$rootScope.sessionNumber = $scope.$storage.sessionNumber;
-	}
-	if ($scope.$storage.secret) {
-		$rootScope.fields.secret = $scope.$storage.secret;
-		if ($rootScope.fields.username && $rootScope.sessionNumber) {
-			$scope.authed = true;
-			$scope.verify();
-		}
+	if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
+		$scope.authed = true;
+		$scope.verify();
 	}
 })
 .controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
@@ -461,8 +445,8 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$scope.sendTorrent = function() {
 		if ($scope.custom.magnet) {
 			var torrentReq = {};
-			torrentReq['username'] = $rootScope.fields.username;
-			torrentReq['session'] = $rootScope.sessionNumber;
+			torrentReq['username'] = $rootScope.$storage.username;
+			torrentReq['session'] = $rootScope.$storage.sessionNumber;
 			torrentReq['torrentLink'] = EncryptService.encrypt($scope.custom.magnet);
 			torrentReq['viewers'] = JSON.stringify($scope.viewers);
 			$scope.viewers = [];
@@ -475,8 +459,8 @@ angular.module('cbVidApp.controllers', ['ui.bootstrap', 'ngStorage']).controller
 	$scope.sendIngest = function() {
 		if ($scope.custom.ingest) {
 			var ingestReq = {};
-			ingestReq['username'] = $rootScope.fields.username;
-			ingestReq['session'] = $rootScope.sessionNumber;
+			ingestReq['username'] = $rootScope.$storage.username;
+			ingestReq['session'] = $rootScope.$storage.sessionNumber;
 			ingestReq['ingestLink'] = EncryptService.encrypt($scope.custom.ingest);
 			ingestReq['viewers'] = JSON.stringify($scope.viewers);
 			$scope.viewers = [];
