@@ -265,6 +265,7 @@ app.get('/download', function (req, res){
 			res.on('close', function(){
 				res.openedFile.unpipe(this);
 				fs.close(this.openedFile.fd);
+				res.destroy();
 			});
 		});
 	} else {
