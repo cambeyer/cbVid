@@ -1,0 +1,98 @@
+<script type="text/ng-template" id="uploadForm.html">
+	<div class="modal-header">
+		<h3 class="modal-title">Upload A Video</h3>
+	</div>
+	<div class="modal-body">
+		<div style="padding-bottom: 20px">
+			<button class="btn btn-default" ng-click="viewers.push({username: ''})">Add Viewer</button>
+		</div>
+		<table ng-if="viewers.length > 0" class="table table-striped">
+			<tr>
+				<td>Viewer</td>
+				<td align="right" style="padding-right: 25px">Action</td>
+			</tr>
+			<tr ng-repeat="user in viewers">
+				<td>
+					<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">
+				</td>
+				<td align="right">
+					<button class="btn btn-default" ng-click="viewers.splice($index, 1)">Remove</button>
+				</td>
+			</tr>
+		</table>
+		<div style="padding-bottom: 10px; padding-left: 10px">
+			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="file">File</label>
+			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="torrent">Torrent</label>
+			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="ingest">Ingest</label>
+		</div>
+		<table class="table">
+			<tr ng-show="type == 'file'">
+				<td>
+					<div class="input-group">
+						<span class="input-group-btn">
+							<span class="btn btn-primary btn-file">
+								Browse&hellip; <input type="file" id="file" onchange="angular.element(this).scope().fileChanged()">
+							</span>
+						</span>
+						<input type="text" class="form-control" readonly>
+					</div>
+    			</td>
+				<td align="right"><button class="btn btn-default" id="upload" ng-click="upload()">Upload</button></td>
+			</tr>
+			<tr ng-show="type == 'torrent'">
+				<td width="100%"><input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link"></td>
+				<td align="right"><button class="btn btn-default" id="torrent" ng-click="sendTorrent()">Torrent</button></td>
+			</tr>
+			<tr ng-show="type == 'ingest'">
+				<td width="100%"><input type="text" ng-model="custom.ingest" class="form-control" placeholder="URL"></td>
+				<td align="right"><button class="btn btn-default" id="ingest" ng-click="sendIngest()">Ingest</button></td>
+			</tr>
+		</table>
+	</div>
+	<div class="modal-footer">
+		<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
+	</div>
+</script>
+<script type="text/ng-template" id="progressForm.html">
+	<div class="modal-header">
+		<h3 class="modal-title">Video Progress</h3>
+	</div>
+	<div class="modal-body">
+		<table ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" width="100%">
+			<tr ng-hide="uploading | isEmpty" ng-repeat="(file, details) in uploading">
+				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
+					<div style="padding-top: 10px; padding-bottom: 10px">{{file}}</div>
+					<progressbar style="max-width: 400px" max="100" value="details.percent" type="success"><b>{{details.percent}}%</b></progressbar>
+				</td>
+			</tr>
+			<tr ng-hide="processing | isEmpty" ng-repeat="(md5, details) in processing">
+				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
+					<div style="padding-top: 10px; padding-bottom: 10px">{{details.name}}</div>
+					<progressbar style="max-width: 400px" ng-if="details.percent" max="100" value="details.percent" type="warning"><b>{{details.percent}}%</b></progressbar>
+					<div ng-if="details.name && !details.percent" style="padding-bottom: 10px">Processed (hh:mm:ss): {{details.timestamp}}</div>
+				</td>
+			</tr>
+		</table>
+		<div ng-show="(uploading | isEmpty) && (processing | isEmpty)" style="text-align: center"><h3>No updates yet.</h3></div>
+	</div>
+	<div class="modal-footer">
+		<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
+	</div>
+</script>
+<nav class="navbar navbar-default navbar-static-top">
+	<div class="container-fluid">
+		<div class="navbar-header">
+			<a class="navbar-brand" href="#">
+				<img alt="cbVid" style="max-height: 23px" src="logo.png">
+			</a>
+		</div>
+		<div>
+			<ul class="nav navbar-nav navbar-right">
+				<li style="margin-right: 20px"><a href="#" ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" ng-click="showProgressDialog()">Progress <img src="loading_2.gif" style="max-height: 23px"></a></li>
+				<li><a href="#" ng-click="showUploadDialog()">Upload</a></li>
+				<li><a href="#" ng-click="logout()">Logout ({{$storage.username}})</a></li>
+			</ul>
+		</div>
+	</div>
+</nav>
+<div ui-view></div>

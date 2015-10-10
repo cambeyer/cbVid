@@ -169,7 +169,10 @@ var transcode = function (file, sessionVars, engine) {
 				vidDetails['details'] = { date: sessionVars.ddate, original: sessionVars.name }; //populate this with title, description, etc.
 				vidDetails['permissions'] = [];
 				vidDetails['permissions'].push({ username: sessionVars.username, isowner: "true" });
-				var viewers = JSON.parse(sessionVars.viewers);
+				var viewers = []
+				try {
+					viewers = JSON.parse(sessionVars.viewers);
+				} catch (e) { }
 				for (var i = 0; i < viewers.length; i++) {
 					if (viewers[i].username && viewers[i].username !== sessionVars.username) { //make sure the owner isnt denied permission to edit their own file
 						vidDetails['permissions'].push({ username: viewers[i].username, isowner: "false" });
@@ -459,14 +462,20 @@ io.on('connection', function (socket) {
 		}
 	});
 	socket.on('verify', function (challenge) {
-		if (decrypt(challenge.username, challenge.sessionNumber, challenge.encryptedPhrase, true) == "client") {
+		if (decrypt(challenge.username, challenge.session, challenge.encryptedPhrase, true) == "client") {
 			console.log("Successfully logged in user: " + challenge.username);
-			getKey(challenge.username, challenge.sessionNumber).verified = true;
-			socket.emit('ok', 'true');
-			sendList(challenge.username, socket);
+			getKey(challenge.username, challenge.session).verified = true;
+			socket.emit('verifyok', 'true');
 		} else {
 			console.log("Failed login for user: " + challenge.username);
-			socket.emit('ok', 'false');
+			socket.emit('verifyok', 'false');
+		}
+	});
+	socket.on('list', function (vidReq) {
+		if (decrypt(vidReq.username, vidReq.session, vidReq.encryptedPhrase) == "list") {
+			sendList(vidReq.username, socket);
+		} else {
+			socket.emit('verifyok', 'false');
 		}
 	});
 	socket.on('logout', function (logoutReq) {

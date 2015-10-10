@@ -1,0 +1,20 @@
+<div class="container-fluid" style="height: 100%">
+	<div class="row">
+		<div ui-view></div>
+		<div ng-show="!(videoList | isEmpty)" class="col-lg-6">
+			<ul class="example-animate-container">
+				<li ng-repeat="video in videoList | orderBy: 'details.original'" class="animate-repeat ellipsis">
+					<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
+						<span class="glyphicon glyphicon-trash"></span>
+					</button>
+					<button ng-if="!video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(video.filename)">
+						<span class="glyphicon glyphicon-remove"></span>
+					</button>
+					<span style="cursor: pointer" ng-class="{'activevideo': video.filename == activeVideo.filename, 'newvideo' : video.new }" ng-bind="video.details.original" ui-sref="cbvid.video.player({ filename: video.filename })">
+					</span>
+				</li>
+			</ul>
+		</div>
+		<div ng-show="fetched && (videoList | isEmpty)" style="text-align: center"><h2>It looks like you have not uploaded any videos!  Choose Upload to get started.</h2></div>
+	</div>
+</div>
