@@ -169,7 +169,7 @@ var transcode = function (file, sessionVars, engine) {
 				vidDetails['details'] = { date: sessionVars.ddate, original: sessionVars.name }; //populate this with title, description, etc.
 				vidDetails['permissions'] = [];
 				vidDetails['permissions'].push({ username: sessionVars.username, isowner: "true" });
-				var viewers = []
+				var viewers = [];
 				try {
 					viewers = JSON.parse(sessionVars.viewers);
 				} catch (e) { }
