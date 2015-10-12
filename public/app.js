@@ -383,6 +383,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					$state.go('cbvid.list.player');
 				});
 			} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
+				alert("q");
 				$state.go('cbvid.list');
 			}
 		}
@@ -400,20 +401,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 		if (!found) {
 			//the url they are accessing isn't in the list of available videos
-			alert("The video you are trying to watch has either been deleted or you do not have permission to access it.");
 			$rootScope.activeVideo = undefined;
 		}
 	};
 	
-	if ($rootScope.activeVideo && ($rootScope.activeVideo.filename !== $rootScope.params.filename)) {
+	if ((!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
+		//there is an active video, but it doesn't match the given url
 		$scope.syncURL();
 	}
 	
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
-		if (!$rootScope.activeVideo) {
-			//if the page was loaded via url, and there was no active video, attempt to load it
-			$scope.syncURL();
-		}
 		var found = false;
 		//this logic is for when a video is deleted and that's the one you were watching.
 		if ($rootScope.activeVideo) {
