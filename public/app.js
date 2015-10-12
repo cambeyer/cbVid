@@ -15,7 +15,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         })
 		
 		.state('cbvid.list', {
-			url: '/video/:filename',
+			url: '/videos/:filename',
 			templateUrl: 'list.html',
 			controller: 'listController',
 			resolve: {
@@ -390,17 +390,28 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
 		if (!$rootScope.activeVideo || ($rootScope.activeVideo.filename !== $rootScope.params.filename)) {
 			for (var i = 0; i < $rootScope.videoList.length; i++) {
-				if ($stateParams.filename == $rootScope.videoList[i].filename) {
+				if ($rootScope.params.filename == $rootScope.videoList[i].filename) {
 					$rootScope.activeVideo = $rootScope.videoList[i];
 					return;
 				}
 			}
 		}
 		if (newValue !== oldValue) {
-			if (!$rootScope.videoList.length > 0) {
-				$rootScope.activeVideo = undefined;
-			} else if (!$rootScope.activeVideo) {
-				$rootScope.activeVideo = $rootScope.videoList[0];
+			var found = false;
+			if ($rootScope.activeVideo) {
+				for (var i = 0; i < $rootScope.videoList.length; i++) {
+					if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found) {
+				if ($rootScope.videoList.length > 0) {
+					$rootScope.activeVideo = $rootScope.videoList[0];
+				} else {
+					$rootScope.activeVideo = undefined;
+				}
 			}
 		}
 	}, true);
