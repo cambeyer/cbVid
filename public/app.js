@@ -14,26 +14,24 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			controller: 'containerController'
         })
 		
-		.state('cbvid.video', {
-			templateUrl: 'video.html',
-			controller: 'videoController'
-		})
-		
-		.state('cbvid.video.player', {
-			url: '/video/:filename',
-			templateUrl: 'player.html',
-			controller: 'playerController',
+		.state('cbvid.list', {
+			url: '/home',
+			templateUrl: 'list.html',
+			controller: 'listController',
 			resolve: {
 				videos: function(VideoList, $rootScope, $stateParams, UserObj, EncryptService) {
-					if ($stateParams.filename) {
-						$rootScope.pendingVid = $stateParams.filename;
-					}
 					if (!$rootScope.fetched) {
 						$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
 					}
 					return VideoList.getList();
 				}
 			}
+		})
+		
+		.state('cbvid.list.player', {
+			url: '/video/:filename',
+			templateUrl: 'player.html',
+			controller: 'playerController'
 		});
 		
     $urlRouterProvider.otherwise('/auth');
@@ -73,7 +71,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			EncryptService.reset();
 			$state.reload();
 		} else {
-			$state.go('cbvid.video');
+			$state.go('cbvid.list');
 		}
 	});
 	
@@ -90,7 +88,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 	
 	$rootScope.socket.on('list', function (videoList) {
-		VideoList.load(videoList);
+		$rootScope.$apply(function() {
+			VideoList.load(videoList);
+		});
 	});
 	
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) { 
@@ -207,10 +207,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 })
 
-.controller('containerController', function($scope, $rootScope, $modal, EncryptService) {
+.controller('containerController', function($scope, $rootScope, $modal, $state, EncryptService) {
 	$rootScope.title = "Home";
 	
 	$rootScope.viewers = [];
+	$rootScope.activeVideo;
 	
 	$scope.sendSubscriptions = function() {
 		for (var md5 in $rootScope.processing) {
@@ -318,11 +319,27 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		});
 	});
+	
+	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
+		if (newValue !== oldValue) {
+			if ($rootScope.activeVideo) {
+				$state.go('cbvid.list.player', { filename: $rootScope.activeVideo.filename } );
+			} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state
+				$state.go('cbvid.list');
+			}
+		}
+	});
+	
+	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
+		if (!$rootScope.videoList.length > 0) {
+			$rootScope.activeVideo = undefined;
+		} else if (!$rootScope.activeVideo) {
+			$rootScope.activeVideo = $rootScope.videoList[0];
+		}
+	}, true);
 })
 
 .controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, EncryptService) {
-	$rootScope.activeVideo;
-	$rootScope.pendingVid = "";
 	$scope.videoFile;
 
 	$scope.videoString = function (videoFile) {
@@ -359,25 +376,25 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	};
 	
-	if ($stateParams.filename) {
-		var found = false;
-		for (var i = 0; i < $rootScope.videoList.length; i++) {
-			if ($stateParams.filename == $rootScope.videoList[i].filename) {
-				$rootScope.activeVideo = $rootScope.videoList[i];
-				$rootScope.title = $rootScope.activeVideo.details.original;
-				$scope.setVideo();
-				found = true;
-				break;
+	
+	if ($rootScope.activeVideo) {
+		if ($rootScope.activeVideo.filename !== $stateParams.filename) {
+			alert("nopee!!");
+			for (var i = 0; i < $rootScope.videoList.length; i++) {
+				if ($rootScope.videoList[i].filename == $stateParams.filename) {
+					$rootScope.activeVideo = $rootScope.videoList[i];
+					return;
+				}
 			}
-		}
-		if (!found) {
-			alert("You do not have access to the video or it may have been deleted.");
-			$state.go('cbvid.video');
+			alert("The video you were viewing was deleted, or your access has been removed.");
+			$rootScope.activeVideo = undefined;
+		} else {
+			$scope.setVideo();
 		}
 	}
 })
 
-.controller('videoController', function ($scope, $rootScope, $state, $stateParams, $timeout, $document, EncryptService, UserObj) {
+.controller('listController', function ($scope, $rootScope, $state, $stateParams, $timeout, $document, EncryptService, UserObj) {
 
 	$scope.deleteVideo = function (filename) {
 		if (confirm("Do you really want to delete this video?")) {
@@ -477,7 +494,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		return this.promise.promise;
 	};
 	this.load = function (videos) {
-		alert('load');
 		if (videos.username == $rootScope.$storage.username) {
 			var clearNew = false;
 			for (var i = 0; i < $rootScope.videoList.length; i++) {
@@ -531,24 +547,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				this.promise.resolve($rootScope.videoList);
 			}
 			$rootScope.fetched = true;
-			var found = false;
-			if ($rootScope.activeVideo) {
-				for (var i = 0; i < $rootScope.videoList.length; i++) {
-					if ($rootScope.activeVideo.filename == $rootScope.videoList[i].filename) {
-						found = true;
-						break;
-					}
-				}
-			}
-			if (!found && !$rootScope.pendingVid) {
-				if ($rootScope.videoList.length > 0) {
-					$rootScope.activeVideo = $rootScope.videoList[0];
-					$state.go('cbvid.video.player', { filename: $rootScope.activeVideo.filename } );
-				} else {
-					$rootScope.activeVideo = "";
-					$state.go('cbvid.video.player');
-				}
-			}
 		}
 	};
 })

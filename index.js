@@ -184,6 +184,7 @@ var transcode = function (file, sessionVars, engine) {
 							fs.unlinkSync(file); //remove the initially uploaded file... could retain this for auditing purposes
 						} catch (e) { }
 						for (var i = 0; i < vidDetails.permissions.length; i++) {
+							console.log("Sending video list");
 							sendList(vidDetails.permissions[i].username);
 						}
 					} else {
