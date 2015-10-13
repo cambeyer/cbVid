@@ -48,6 +48,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
+	$rootScope.procuring = {};
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
@@ -224,6 +225,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		for (var md5 in $rootScope.processing) {
 			$rootScope.socket.emit('subscribe', md5);
 		}
+		for (var md5 in $rootScope.procuring) {
+			$rootScope.socket.emit('subscribe', md5);
+		}
 	};
 
 	$scope.sendSubscriptions();
@@ -294,6 +298,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			return false;
 		}
 	};
+	
+	$rootScope.socket.on('procuring', function(md5) {
+		$scope.$apply(function () {
+			$rootScope.procuring[md5] = {};
+			$rootScope.procuring[md5].percent = 0;
+			$scope.sendSubscriptions();
+		});
+	});
 
 	$rootScope.socket.on('processing', function (md5) {
 		$scope.$apply(function () {
@@ -305,25 +317,33 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.socket.on('progress', function (msg){
 		$scope.$apply(function () {
+			var relevantArr;
+			if (msg.type == 'processing') {
+				relevantArr = $rootScope.processing;
+			} else {
+				relevantArr = $rootScope.procuring;
+			}
 			var percent;
 			if (msg.percent) {
 				percent = Math.floor(msg.percent).toFixed(0);
-				if ($rootScope.processing[msg.md5]) {
-					$rootScope.processing[msg.md5].percent = percent;
+				if (relevantArr[msg.md5]) {
+					relevantArr[msg.md5].percent = percent;
 				}
 			} else {
-				delete $rootScope.processing[msg.md5].percent;
+				delete relevantArr[msg.md5].percent;
 			}
-			if ($rootScope.processing[msg.md5]) {
-				$rootScope.processing[msg.md5].timestamp = msg.timestamp;
-				if (!$rootScope.processing[msg.md5].name && msg.name) {
-					$rootScope.processing[msg.md5].name = msg.name;
+			if (relevantArr[msg.md5]) {
+				if (msg.timestamp) {
+					relevantArr[msg.md5].timestamp = msg.timestamp;
+				}
+				if (!relevantArr[msg.md5].name && msg.name) {
+					relevantArr[msg.md5].name = msg.name;
 				}
 			}
 			if (percent >= 100) {
 				try {
-					delete $rootScope.processing[msg.md5];
-					if (Object.keys($rootScope.processing).length == 0 && Object.keys($rootScope.uploading).length == 0) {
+					delete relevantArr[msg.md5];
+					if (msg.type == "processing" && Object.keys($rootScope.processing).length == 0 && Object.keys($rootScope.procuring).length == 0 && Object.keys($rootScope.uploading).length == 0) {
 						$scope.progressModal.close();
 					}
 				} catch (e) {}

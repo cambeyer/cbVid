@@ -28,8 +28,6 @@ var done = [];
 
 var userKeys = {};
 
-var playing = {};
-
 var db = {};
 db.users = new nedb({ filename: dir + "users.db", autoload: true });
 db.users.persistence.setAutocompactionInterval(200000);
@@ -138,7 +136,7 @@ var transcode = function (file, sessionVars, engine) {
 			percent = progress.percent;
 			timestamp = progress.timemark;
 			if (processing[sessionVars.md5]) {
-				var resp = { md5: sessionVars.md5, timestamp: progress.timemark, name: sessionVars.name };
+				var resp = { md5: sessionVars.md5, timestamp: progress.timemark, name: sessionVars.name, type: 'processing' };
 				if (progress.percent) {
 					resp.percent = progress.percent;
 				}
@@ -155,11 +153,11 @@ var transcode = function (file, sessionVars, engine) {
 				});
 			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
-				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
 				delete processing[sessionVars.md5];
 				console.log('File has been transcoded successfully: ' + sessionVars.md5);
 			} else {
-				done.push(sessionVars.md5);
+				done.push({ md5: sessionVars.md5, type: 'processing' });
 				console.log("Completed without an active listener: " + sessionVars.md5);
 			}
 			if (sessionVars.ddate) {
@@ -201,10 +199,10 @@ var transcode = function (file, sessionVars, engine) {
 				});
 			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
-				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100 });
+				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
 				delete processing[sessionVars.md5];
 			} else {
-				done.push(sessionVars.md5);
+				done.push({ md5: sessionVars.md5, type: 'processing' });
 			}
 			console.log('File has been abandoned due to error: ' + sessionVars.md5);
 			try {
@@ -220,6 +218,7 @@ var transcode = function (file, sessionVars, engine) {
 
 		setTimeout(function() {
 			if (!percent && !timestamp) {
+				console.log("No progress has been made; killing the process.");
 				command.kill();
 			}
 		}, 30000);
@@ -395,16 +394,15 @@ io.on('connection', function (socket) {
 	socket.on('subscribe', function (md5) {
 		console.log("Subscription from client for processing updates " + md5);
 		for (var i = 0; i < done.length; i++) {
-			if (done[i] == md5) {
-				console.log("***" + done[i] + " " + md5);
-				console.log("File finished transcoding before client subscription; sending that information back to the client");
-				socket.emit('progress', { md5: md5, percent: 100 });
+			if (done[i].md5 == md5) {
+				console.log("File finished activity before client subscription; sending that information back to the client");
+				socket.emit('progress', { md5: md5, percent: 100, type: done[i].type });
 				done.splice(i, 1);
 				return;
 			}
 		}
 		if (!processing[md5]) {
-			socket.emit('progress', { md5: md5, percent: 0 });
+			socket.emit('progress', { md5: md5, percent: 0, type: 'processing' });
 		}
 		processing[md5] = socket;
 	});
@@ -549,29 +547,66 @@ io.on('connection', function (socket) {
 		if (sessionVars.ingestLink) {
 			try {
 				console.log("Initiating ingest request");
-
-				var md5 = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
-				sessionVars.name = md5;
-				md5 = crypto.createHash('md5').update(md5).digest('hex');
-				sessionVars.md5 = md5 ? md5 : "ingested";
+				
+				var downloaded = 0;
+				var filesize;
+				
+				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
+				filename = filename ? filename : "ingested";
+				sessionVars.name = filename;
+				filename = dir + filename;
 
 				var num = 0;
 				var exists = true;
 				while (exists) {
 					try {
-						fs.statSync(dir + sessionVars.md5 + num);
+						fs.statSync(filename + num);
 						num = num + 1;
 					} catch (e) {
-						sessionVars.md5 = sessionVars.md5 + num;
+						filename = filename + num;
 						exists = false;
 					}
 				}
-
-				sessionVars.ddate = String(Date.now());
-				socket.emit('processing', sessionVars.md5);
-				transcode(request(sessionVars.ingestLink, { timeout: 3500 }, function (err) {
-					console.log("Could not connect to ingest link.");
-				}), sessionVars);
+				
+				var hash = crypto.createHash('md5');
+				var stream = request(sessionVars.ingestLink);
+				var fstream = fs.createWriteStream(filename);
+				stream.on('data', function (chunk) {
+					hash.update(chunk);
+					downloaded = downloaded + chunk.length;
+					var percent = downloaded / filesize * 100;
+					socket.emit('progress', { md5: sessionVars.ingestLink, percent: percent, type: 'procuring', name: sessionVars.name });
+				});
+				stream.on('error', function(err) {
+					console.log("Error streaming ingest");
+				});
+				stream.on('response', function (data) {
+					socket.emit('procuring', sessionVars.ingestLink);
+					filesize = data.headers['content-length'];
+				});
+				fstream.on('close', function () {
+					sessionVars.md5 = hash.digest('hex');
+					if (!socket.disconnected) {
+						socket.emit('progress', { md5: sessionVars.ingestLink, percent: 100, type: 'procuring', name: sessionVars.name });
+					} else {
+						done.push({ md5: sessionVars.ingestLink, type: 'procuring' });
+					}
+					var num = 0;
+					var exists = true;
+					while (exists) {
+						try {
+							fs.statSync(dir + sessionVars.md5 + num);
+							num = num + 1;
+						} catch (e) {
+							sessionVars.md5 = sessionVars.md5 + num;
+							exists = false;
+						}
+					}
+					sessionVars.ddate = String(Date.now());
+					socket.emit('processing', sessionVars.md5);
+					transcode(filename, sessionVars);
+				});
+				stream.pipe(fstream);
 			} catch (e) { }
 		}
 	});

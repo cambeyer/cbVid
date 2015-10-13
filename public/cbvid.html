@@ -58,11 +58,17 @@
 		<h3 class="modal-title">Video Progress</h3>
 	</div>
 	<div class="modal-body">
-		<table ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" width="100%">
+		<table ng-if="!(procuring | isEmpty) || !(uploading | isEmpty) || !(processing | isEmpty)" width="100%">
 			<tr ng-hide="uploading | isEmpty" ng-repeat="(file, details) in uploading">
 				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
 					<div style="padding-top: 10px; padding-bottom: 10px">{{file}}</div>
 					<progressbar style="max-width: 400px" max="100" value="details.percent" type="success"><b>{{details.percent}}%</b></progressbar>
+				</td>
+			</tr>
+			<tr ng-hide="procuring | isEmpty" ng-repeat="(md5, details) in procuring">
+				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
+					<div style="padding-top: 10px; padding-bottom: 10px">{{details.name}}</div>
+					<progressbar style="max-width: 400px" max="100" value="details.percent" type="danger"><b>{{details.percent}}%</b></progressbar>
 				</td>
 			</tr>
 			<tr ng-hide="processing | isEmpty" ng-repeat="(md5, details) in processing">
@@ -73,7 +79,7 @@
 				</td>
 			</tr>
 		</table>
-		<div ng-show="(uploading | isEmpty) && (processing | isEmpty)" style="text-align: center"><h3>No updates yet.</h3></div>
+		<div ng-show="(procuring | isEmpty) && (uploading | isEmpty) && (processing | isEmpty)" style="text-align: center"><h3>No updates yet.</h3></div>
 	</div>
 	<div class="modal-footer">
 		<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
