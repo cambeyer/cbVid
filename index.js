@@ -392,7 +392,7 @@ io.on('connection', function (socket) {
 		socket.disconnected = true;
 	});
 	socket.on('subscribe', function (md5) {
-		console.log("Subscription from client for processing updates " + md5);
+		console.log("Subscription from client for updates " + md5);
 		for (var i = 0; i < done.length; i++) {
 			if (done[i].md5 == md5) {
 				console.log("File finished activity before client subscription; sending that information back to the client");

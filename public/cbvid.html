@@ -94,7 +94,7 @@
 		</div>
 		<div>
 			<ul class="nav navbar-nav navbar-right">
-				<li style="margin-right: 20px"><a ng-if="!(uploading | isEmpty) || !(processing | isEmpty)" ng-click="showProgressDialog()">Progress <img src="loading_2.gif" style="max-height: 23px"></a></li>
+				<li style="margin-right: 20px"><a ng-if="!(procuring | isEmpty) || !(uploading | isEmpty) || !(processing | isEmpty)" ng-click="showProgressDialog()">Progress <img src="loading_2.gif" style="max-height: 23px"></a></li>
 				<li><a ng-click="showUploadDialog()">Upload</a></li>
 				<li><a ng-click="logout()">Logout ({{$storage.username}})</a></li>
 			</ul>
