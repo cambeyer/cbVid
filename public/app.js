@@ -124,6 +124,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		passwordConfirm: ""
 	};
 	
+	$scope.srpObj;
+	
 	if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 		$rootScope.verify();
 	}
@@ -145,19 +147,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.srpClient = new jsrp.client();
 				/*global CryptoJS*/
 				$rootScope.srpClient.init({ username: $rootScope.$storage.username, password: CryptoJS.MD5($rootScope.credentials.password).toString() }, function () {
-					var srpObj = {};
-					srpObj.username = $rootScope.$storage.username;
-					srpObj.publicKey = $rootScope.srpClient.getPublicKey();
-					$rootScope.socket.emit('login', srpObj);
+					$scope.srpObj = {};
+					$scope.srpObj.username = $rootScope.$storage.username;
+					$scope.srpObj.publicKey = $rootScope.srpClient.getPublicKey();
+					$rootScope.socket.emit('login', $scope.srpObj);
 				});
 			} else {
 				if ($rootScope.credentials.passwordConfirm == $rootScope.credentials.password) {
 					$rootScope.srpClient.createVerifier(function (err, result) {
 						if (!err) {
-							var srpObj = {};
-							srpObj.salt = result.salt;
-							srpObj.verifier = result.verifier;
-							$rootScope.socket.emit('new', srpObj);
+							$scope.srpObj.salt = result.salt;
+							$scope.srpObj.verifier = result.verifier;
+							$rootScope.socket.emit('new', $scope.srpObj);
 						} else {
 							console.log("Error creating verifier.");
 						}
