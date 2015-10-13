@@ -64,7 +64,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('verifyok', function(successBool) {
 		$rootScope.$storage.authed = successBool !== 'false';
 		if (!$rootScope.$storage.authed) {
-			alert("Your session has expired.  Please log in again.");
+			//alert("Your session has expired.  Please log in again.");
 			$localStorage.$reset({
 				username: $rootScope.$storage.username
 			});
