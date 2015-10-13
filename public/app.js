@@ -316,9 +316,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 			if ($rootScope.processing[msg.md5]) {
 				$rootScope.processing[msg.md5].timestamp = msg.timestamp;
-			}
-			if (!$rootScope.processing[msg.md5].name && msg.name) {
-				$rootScope.processing[msg.md5].name = msg.name;
+				if (!$rootScope.processing[msg.md5].name && msg.name) {
+					$rootScope.processing[msg.md5].name = msg.name;
+				}
 			}
 			if (percent >= 100) {
 				try {
