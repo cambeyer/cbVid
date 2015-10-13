@@ -106,8 +106,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				event.preventDefault();
 				var newDest = String($rootScope.pendingState);
 				var newParams = JSON.parse(JSON.stringify($rootScope.pendingParameters));
-				$rootScope.pendingState = '';
-				$rootScope.pendingParameters = '';
+				$rootScope.pendingState = undefined;
+				$rootScope.pendingParameters = undefined;
 				$state.go(newDest, newParams);
 			}
 		}
@@ -322,6 +322,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, EncryptService) {
+	$rootScope.title = $rootScope.activeVideo.details.original;
 	$scope.videoFile;
 
 	$scope.videoString = function (videoFile) {
@@ -376,16 +377,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
-		if (newValue !== oldValue) {
-			if ($rootScope.activeVideo) {
-				//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
-				$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
-					$state.go('cbvid.list.player');
-				});
-			} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
-				alert("q");
-				$state.go('cbvid.list');
-			}
+		if ($rootScope.activeVideo) {
+			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
+			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
+				$state.go('cbvid.list.player');
+			});
+		} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
+			$state.go('cbvid.list');
 		}
 	});
 	
@@ -405,7 +403,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	};
 	
-	if ((!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
+	if ((!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && $rootScope.params.filename && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
+		//there is no active video, but there is a url -OR-
 		//there is an active video, but it doesn't match the given url
 		$scope.syncURL();
 	}
