@@ -160,7 +160,7 @@ var transcode = function (file, sessionVars, engine) {
 				console.log('File has been transcoded successfully: ' + sessionVars.md5);
 			} else {
 				done.push(sessionVars.md5);
-				console.log("Completed without an active listener");
+				console.log("Completed without an active listener: " + sessionVars.md5);
 			}
 			if (sessionVars.ddate) {
 				//username: sessionVars.username
@@ -396,6 +396,7 @@ io.on('connection', function (socket) {
 		console.log("Subscription from client for processing updates " + md5);
 		for (var i = 0; i < done.length; i++) {
 			if (done[i] == md5) {
+				console.log("***" + done[i] + " " + md5);
 				console.log("File finished transcoding before client subscription; sending that information back to the client");
 				socket.emit('progress', { md5: md5, percent: 100 });
 				done.splice(i, 1);
