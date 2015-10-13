@@ -100,7 +100,7 @@ input[readonly] {
   /*max-height: 500px;*/
 }
 
-.fp-engine {
+video.fp-engine {
   width: initial !important;
   position: initial !important;
   max-width: 100%;
