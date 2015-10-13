@@ -553,14 +553,13 @@ io.on('connection', function (socket) {
 				
 				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
 				filename = filename ? filename : "ingested";
-				sessionVars.name = filename;
-				filename = dir + filename;
+				sessionVars.name = String(filename);
 
 				var num = 0;
 				var exists = true;
 				while (exists) {
 					try {
-						fs.statSync(filename + num);
+						fs.statSync(dir + filename + num);
 						num = num + 1;
 					} catch (e) {
 						filename = filename + num;
@@ -570,26 +569,26 @@ io.on('connection', function (socket) {
 				
 				var hash = crypto.createHash('md5');
 				var stream = request(sessionVars.ingestLink);
-				var fstream = fs.createWriteStream(filename);
+				var fstream = fs.createWriteStream(dir + filename);
 				stream.on('data', function (chunk) {
 					hash.update(chunk);
 					downloaded = downloaded + chunk.length;
 					var percent = downloaded / filesize * 100;
-					socket.emit('progress', { md5: sessionVars.ingestLink, percent: percent, type: 'procuring', name: sessionVars.name });
+					socket.emit('progress', { md5: filename, percent: percent, type: 'procuring', name: sessionVars.name });
 				});
 				stream.on('error', function(err) {
 					console.log("Error streaming ingest");
 				});
 				stream.on('response', function (data) {
-					socket.emit('procuring', sessionVars.ingestLink);
+					socket.emit('procuring', filename);
 					filesize = data.headers['content-length'];
 				});
 				fstream.on('close', function () {
 					sessionVars.md5 = hash.digest('hex');
 					if (!socket.disconnected) {
-						socket.emit('progress', { md5: sessionVars.ingestLink, percent: 100, type: 'procuring', name: sessionVars.name });
+						socket.emit('progress', { md5: filename, percent: 100, type: 'procuring', name: sessionVars.name });
 					} else {
-						done.push({ md5: sessionVars.ingestLink, type: 'procuring' });
+						done.push({ md5: filename, type: 'procuring' });
 					}
 					var num = 0;
 					var exists = true;
@@ -604,7 +603,7 @@ io.on('connection', function (socket) {
 					}
 					sessionVars.ddate = String(Date.now());
 					socket.emit('processing', sessionVars.md5);
-					transcode(filename, sessionVars);
+					transcode(dir + filename, sessionVars);
 				});
 				stream.pipe(fstream);
 			} catch (e) { }
