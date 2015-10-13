@@ -324,15 +324,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				relevantArr = $rootScope.procuring;
 			}
 			var percent;
-			if (msg.percent) {
-				percent = Math.floor(msg.percent).toFixed(0);
-				if (relevantArr[msg.md5]) {
-					relevantArr[msg.md5].percent = percent;
-				}
-			} else {
-				delete relevantArr[msg.md5].percent;
-			}
 			if (relevantArr[msg.md5]) {
+				if (msg.percent) {
+					percent = Math.floor(msg.percent).toFixed(0);
+					relevantArr[msg.md5].percent = percent;
+				} else {
+					delete relevantArr[msg.md5].percent;
+				}
 				if (msg.timestamp) {
 					relevantArr[msg.md5].timestamp = msg.timestamp;
 				}
