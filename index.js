@@ -378,7 +378,7 @@ var sendList = function (username, socket) {
 
 var deleteVideo = function (md5) {
 	db.videos.findOne({ filename: md5 }, function(err, video) {
-		if (!err) {
+		if (!err && video) {
 			var affected = [];
 			for (var i = 0; i < video.permissions.length; i++) {
 				affected.push(video.permissions[i].username);
