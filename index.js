@@ -401,7 +401,6 @@ var deleteVideo = function (md5) {
 io.on('connection', function (socket) {
 	socket.disconnected = false;
 	socket.on('disconnect', function () {
-		console.log("Socket disconnected");
 		socket.disconnected = true;
 	});
 	socket.on('subscribe', function (md5) {
@@ -530,12 +529,12 @@ io.on('connection', function (socket) {
 								}
 								console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
 								sessionVars.name = largestFile.name;
-		
+
 								var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
 								md5 = md5.split(":")[md5.split(":").length - 1];
 								md5 = crypto.createHash('md5').update(md5).digest('hex');
 								sessionVars.md5 = md5 ? md5 : "torrented";
-		
+
 								var num = 0;
 								var exists = true;
 								while (exists) {
@@ -547,7 +546,7 @@ io.on('connection', function (socket) {
 										exists = false;
 									}
 								}
-		
+
 								sessionVars.ddate = String(Date.now());
 								socket.emit('processing', sessionVars.md5);
 								transcode(largestFile.createReadStream(), sessionVars, engine);
@@ -565,10 +564,10 @@ io.on('connection', function (socket) {
 		if (sessionVars.ingestLink) {
 			try {
 				console.log("Initiating ingest request");
-				
+
 				var downloaded = 0;
 				var filesize;
-				
+
 				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
 				filename = filename ? filename : "ingested";
 				sessionVars.name = String(filename);
@@ -584,7 +583,7 @@ io.on('connection', function (socket) {
 						exists = false;
 					}
 				}
-				
+
 				var hash = crypto.createHash('md5');
 				var stream = request(sessionVars.ingestLink);
 				var fstream = fs.createWriteStream(dir + filename);
