@@ -6,6 +6,7 @@ var fs = require('fs-extra');
 var http = require('http').Server(app);
 var request = require('request');
 var io = require('socket.io')(http);
+var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
 var crypto = require('crypto');
 var node_cryptojs = require('node-cryptojs-aes');
@@ -144,7 +145,7 @@ var transcode = function (file, sessionVars, engine) {
 			} else if (progress.percent > 50) {
 				console.log("Transcoding without a client listener (>50%)");
 			}
-			//console.log('Transcoding: ' + progress.percent + '% done');
+			//console.log('Transcoding progress ' + sessionVars.md5);
 		})
 		.on('end', function () {
 			if (engine) {
@@ -499,42 +500,47 @@ io.on('connection', function (socket) {
 		if (sessionVars.torrentLink) {
 			try {
 				console.log("Initializing torrent request");
-				var engine = torrentStream(sessionVars.torrentLink, {
-					verify: true,
-					dht: true,
-					tmp: dir
-				});
-				engine.on('ready', function() {
-					if (engine.files.length > 0) {
-						var largestFile = engine.files[0];
-						for (var i = 1; i < engine.files.length; i++) {
-							if (engine.files[i].length > largestFile.length) {
-								largestFile = engine.files[i];
+				parseTorrent.remote(sessionVars.torrentLink, function (err, parsedTorrent) {
+					if (!err) {
+						sessionVars.torrentLink = parseTorrent.toMagnetURI(parsedTorrent);
+						var engine = torrentStream(sessionVars.torrentLink, {
+							verify: true,
+							dht: true,
+							tmp: dir
+						});
+						engine.on('ready', function() {
+							if (engine.files.length > 0) {
+								var largestFile = engine.files[0];
+								for (var i = 1; i < engine.files.length; i++) {
+									if (engine.files[i].length > largestFile.length) {
+										largestFile = engine.files[i];
+									}
+								}
+								console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+								sessionVars.name = largestFile.name;
+		
+								var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
+								md5 = md5.split(":")[md5.split(":").length - 1];
+								md5 = crypto.createHash('md5').update(md5).digest('hex');
+								sessionVars.md5 = md5 ? md5 : "torrented";
+		
+								var num = 0;
+								var exists = true;
+								while (exists) {
+									try {
+										fs.statSync(dir + sessionVars.md5 + num);
+										num = num + 1;
+									} catch (e) {
+										sessionVars.md5 = sessionVars.md5 + num;
+										exists = false;
+									}
+								}
+		
+								sessionVars.ddate = String(Date.now());
+								socket.emit('processing', sessionVars.md5);
+								transcode(largestFile.createReadStream(), sessionVars, engine);
 							}
-						}
-						console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-						sessionVars.name = largestFile.name;
-
-						var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
-						md5 = md5.split(":")[md5.split(":").length - 1];
-						md5 = crypto.createHash('md5').update(md5).digest('hex');
-						sessionVars.md5 = md5 ? md5 : "torrented";
-
-						var num = 0;
-						var exists = true;
-						while (exists) {
-							try {
-								fs.statSync(dir + sessionVars.md5 + num);
-								num = num + 1;
-							} catch (e) {
-								sessionVars.md5 = sessionVars.md5 + num;
-								exists = false;
-							}
-						}
-
-						sessionVars.ddate = String(Date.now());
-						socket.emit('processing', sessionVars.md5);
-						transcode(largestFile.createReadStream(), sessionVars, engine);
+						});
 					}
 				});
 			} catch (e) {
