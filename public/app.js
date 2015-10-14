@@ -59,9 +59,19 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.verify();
 		});
 	});
+	
+	$rootScope.sendSubscriptions = function() {
+		for (var md5 in $rootScope.processing) {
+			$rootScope.socket.emit('subscribe', md5);
+		}
+		for (var md5 in $rootScope.procuring) {
+			$rootScope.socket.emit('subscribe', md5);
+		}
+	};
 
 	$rootScope.verify = function() {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
+			console.log("Verifying");
 			$rootScope.socket.emit('verify', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('client') }));
 		}
 	};
@@ -76,6 +86,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			EncryptService.reset();
 			$state.reload();
 		} else {
+			$rootScope.sendSubscriptions();
 			if ($state.current.name == 'auth') {
 				$state.go('cbvid.list');
 			}
@@ -221,17 +232,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.viewers = [];
 	$rootScope.activeVideo;
 
-	$scope.sendSubscriptions = function() {
-		for (var md5 in $rootScope.processing) {
-			$rootScope.socket.emit('subscribe', md5);
-		}
-		for (var md5 in $rootScope.procuring) {
-			$rootScope.socket.emit('subscribe', md5);
-		}
-	};
-
-	$scope.sendSubscriptions();
-
 	$scope.showUploadDialog = function () {
 		$scope.uploadModal = $modal.open({
 			animation: true,
@@ -285,7 +285,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 						delete $rootScope.uploading[filename];
 						$rootScope.processing[md5] = {};
 						$rootScope.processing[md5].percent = 0;
-						$scope.sendSubscriptions();
+						$rootScope.sendSubscriptions();
 					});
 				} else if (oReq.readyState == 4 && oReq.status !== 200) {
 					alert("There was an error uploading your file");
@@ -303,7 +303,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$scope.$apply(function () {
 			$rootScope.procuring[md5] = {};
 			$rootScope.procuring[md5].percent = 0;
-			$scope.sendSubscriptions();
+			$rootScope.sendSubscriptions();
 		});
 	});
 
@@ -311,7 +311,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$scope.$apply(function () {
 			$rootScope.processing[md5] = {};
 			$rootScope.processing[md5].percent = 0;
-			$scope.sendSubscriptions();
+			$rootScope.sendSubscriptions();
 		});
 	});
 

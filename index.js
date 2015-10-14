@@ -149,9 +149,20 @@ var transcode = function (file, sessionVars, engine) {
 		})
 		.on('end', function () {
 			if (engine) {
-				engine.remove(false, function() {
-					console.log("Removed torrent temp data");
-				});
+				var found = false;
+				for (var temp in processing) {
+					if (temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					engine.remove(false, function() {
+						console.log("Removed torrent temp data");
+					});
+				} else {
+					console.log("Another process is using the same torrent data.  Leaving intact.");
+				}
 			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
@@ -390,6 +401,7 @@ var deleteVideo = function (md5) {
 io.on('connection', function (socket) {
 	socket.disconnected = false;
 	socket.on('disconnect', function () {
+		console.log("Socket disconnected");
 		socket.disconnected = true;
 	});
 	socket.on('subscribe', function (md5) {
