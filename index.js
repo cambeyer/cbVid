@@ -151,7 +151,7 @@ var transcode = function (file, sessionVars, engine) {
 			if (engine) {
 				var found = false;
 				for (var temp in processing) {
-					if (temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
+					if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
 						found = true;
 						break;
 					}
@@ -166,12 +166,12 @@ var transcode = function (file, sessionVars, engine) {
 			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
-				delete processing[sessionVars.md5];
 				console.log('File has been transcoded successfully: ' + sessionVars.md5);
 			} else {
 				done.push({ md5: sessionVars.md5, type: 'processing' });
 				console.log("Completed without an active listener: " + sessionVars.md5);
 			}
+			delete processing[sessionVars.md5];
 			if (sessionVars.ddate) {
 				//username: sessionVars.username
 				var vidDetails = {};
@@ -206,16 +206,27 @@ var transcode = function (file, sessionVars, engine) {
 		.on('error', function (err, stdout, stderr) {
 			//console.log("Transcoding issue: " + err + stderr);
 			if (engine) {
-				engine.remove(false, function() {
-					console.log("Removed torrent temp data");
-				});
+				var found = false;
+				for (var temp in processing) {
+					if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					engine.remove(false, function() {
+						console.log("Removed torrent temp data");
+					});
+				} else {
+					console.log("Another process is using the same torrent data.  Leaving intact.");
+				}
 			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
-				delete processing[sessionVars.md5];
 			} else {
 				done.push({ md5: sessionVars.md5, type: 'processing' });
 			}
+			delete processing[sessionVars.md5];
 			console.log('File has been abandoned due to error: ' + sessionVars.md5);
 			try {
 				fs.statSync(file);
