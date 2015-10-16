@@ -605,7 +605,10 @@ io.on('connection', function (socket) {
 					socket.emit('progress', { md5: filename, percent: percent, type: 'procuring', name: sessionVars.name });
 				});
 				stream.on('error', function(err) {
-					console.log("Error streaming ingest");
+					try {
+						fs.unlinkSync(dir + filename);
+					} catch (e) { }
+					console.log("Error streaming ingest " + err);
 				});
 				stream.on('response', function (data) {
 					socket.emit('procuring', filename);
