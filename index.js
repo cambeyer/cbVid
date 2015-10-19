@@ -261,12 +261,15 @@ app.get('/download', function (req, res){
 			}
 			var range = req.headers.range || "";
 			var total = stats.size;
+			var start = 0;
+			var end = total - 1;
 			if (range) {
+				console.log(range);
 				var parts = range.replace(/bytes=/, "").split("-");
 				var partialstart = parts[0];
 				var partialend = parts[1];
-				var start = parseInt(partialstart, 10);
-				var end = partialend ? parseInt(partialend, 10) : total-1;
+				start = partialstart ? parseInt(partialstart, 10) : start;
+				end = partialend ? parseInt(partialend, 10) : end;
 				var chunksize = (end-start)+1;
 				//console.log("Request for partial file: " + filename + "; size: " + (total / Math.pow(2, 20)).toFixed(1) + " MB");
 				res.writeHead(206, {
