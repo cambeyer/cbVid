@@ -4,6 +4,7 @@ var busboy = require('connect-busboy');
 var path = require('path');
 var fs = require('fs-extra');
 var http = require('http').Server(app);
+var send = require('send');
 var request = require('request');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
@@ -259,39 +260,15 @@ app.get('/download', function (req, res){
 				res.end("Could not read file");
 				return;
 			}
-			var range = req.headers.range || "";
-			var total = stats.size;
-			var readStream;
-			if (range) {
-				var parts = range.replace(/bytes=/, "").split("-");
-				var partialstart = parts[0];
-				var partialend = parts[1];
-				var start = partialstart ? parseInt(partialstart, 10) : 0;
-				var end = partialend ? parseInt(partialend, 10) : total - 1;
-				var chunksize = (end-start)+1;
-				//console.log("Request for partial file: " + filename + "; size: " + (total / Math.pow(2, 20)).toFixed(1) + " MB");
-				res.writeHead(206, {
-					"Content-Range": "bytes " + start + "-" + end + "/" + total,
-					"Accept-Ranges": "bytes",
-					"Content-Length": chunksize,
-					"Content-Type": "video/mp4"
-				});
-				readStream = fs.createReadStream(file, {start:start, end:end});
-			} else {
-				res.writeHead(200, {
-					"Accept-Ranges": "bytes",
-					"Content-Length": stats.size,
-					"Content-Type": "video/mp4"
-				});
-				readStream = fs.createReadStream(file);
-			}
-			res.openedFile = readStream;
-			readStream.pipe(res);
-			res.on('close', function(){
-				res.openedFile.unpipe(this);
-				fs.close(this.openedFile.fd);
-				res.destroy();
-			});
+			
+			send(req, file)
+				.on('error', function(err) {
+					console.log(err);
+				})
+				.on('headers', function(res, path, stat) {
+					res.setHeader('Content-Type', 'video/mp4');
+				})
+				.pipe(res);
 		});
 	} else {
 		res.sendStatus(401);
