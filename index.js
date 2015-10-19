@@ -260,8 +260,8 @@ app.get('/download', function (req, res){
 				res.end("Could not read file");
 				return;
 			}
-			
-			send(req, file)
+
+			send(req, file, {maxAge: '10h'})
 				.on('error', function(err) {
 					console.log(err);
 				})
