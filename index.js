@@ -248,7 +248,7 @@ var transcode = function (file, sessionVars, engine) {
 		}, 30000);
 };
 
-app.get('/download', function (req, res){
+app.get('/download.mp4', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
 	if (filename) {

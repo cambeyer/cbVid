@@ -59,7 +59,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.verify();
 		});
 	});
-	
+
 	$rootScope.sendSubscriptions = function() {
 		for (var md5 in $rootScope.processing) {
 			$rootScope.socket.emit('subscribe', md5);
@@ -298,7 +298,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			return false;
 		}
 	};
-	
+
 	$rootScope.socket.on('procuring', function(md5) {
 		$scope.$apply(function () {
 			$rootScope.procuring[md5] = {};
@@ -358,7 +358,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			$scope.videoFile = videoFile;
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./download?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
+			return $sce.trustAsResourceUrl("./download.mp4?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
 	};
 
