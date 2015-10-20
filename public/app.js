@@ -571,9 +571,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		restrict: 'E',
 		template: '' +
 			'<div>' + 
-				'<div style="padding-bottom: 20px">' + 
-					'<button class="btn btn-default" ng-click="list.push({username: \'\'})">Add Viewer</button>' + 
-				'</div>' + 
 				'<table ng-if="list.length > 0" class="table table-striped">' + 
 					'<tr>' + 
 						'<td>Viewer</td>' + 
@@ -583,11 +580,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 						'<td>' + 
 							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">' + 
 						'</td>' + 
-						'<td align="right">' + 
+						'<td align="right" style="padding-right: 0px">' + 
 							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' + 
 						'</td>' + 
 					'</tr>' + 
 				'</table>' + 
+				'<div style="padding-bottom: 20px; text-align: right">' + 
+					'<button class="btn btn-primary" ng-click="list.push({username: \'\'})">+Viewer</button>' + 
+				'</div>' + 
 			'</div>',
 		controller: function($scope) {
 			$scope.checkViewers = function () {
