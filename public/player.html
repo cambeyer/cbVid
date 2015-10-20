@@ -1,8 +1,8 @@
 <div ng-show="!(videoList | isEmpty)" class="col-lg-6">
 	<div style="text-align: center">
 		<div class="player"></div>
-		<h3 style="margin-bottom: 20px">{{activeVideo.details.original}}</h2>
-		<h5 style="margin-bottom: 50px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h4>
-		<div ng-if="activeVideo.edit"><button class="btn btn-default" ng-click="update()">Update</button></div>
+		<h3 style="margin-bottom: 20px" ng-bind="activeVideo.details.original"></h2>
+		<h5 style="margin-bottom: 20px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h5>
+		<div style="margin-bottom: 50px" ng-if="activeVideo.edit"><button class="btn btn-primary" ng-click="showUpdateDialog()">Update</button></div>
 	</div>
 </div>

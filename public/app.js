@@ -175,7 +175,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if (!$scope.confirmPassword) {
 				/*global jsrp*/
 				$rootScope.srpClient = new jsrp.client();
-				/*global CryptoJS*/
 				$rootScope.srpClient.init({ username: $rootScope.$storage.username, password: CryptoJS.MD5($rootScope.credentials.password).toString() }, function () {
 					$scope.srpObj = {};
 					$scope.srpObj.username = $rootScope.$storage.username;
@@ -361,7 +360,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 })
 
-.controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, EncryptService) {
+.controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, $modal, EncryptService) {
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
 
@@ -371,6 +370,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			/*global btoa*/
 			return $sce.trustAsResourceUrl("./download.mp4?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
+	};
+	
+	$scope.showUpdateDialog = function () {
+		$scope.progressModal = $modal.open({
+			animation: true,
+			templateUrl: 'updateForm.html',
+			controller: 'UpdateForm',
+			size: 'md',
+			scope: $scope
+		});
 	};
 
 	$scope.setVideo = function () {
@@ -492,12 +501,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$('input[type=file]').bootstrapFileInput();
 	};
 
-	$scope.checkViewers = function () {
-		for (var i = 0; i < $rootScope.viewers.length; i++) {
-			$rootScope.viewers[i].username = $rootScope.viewers[i].username.replace(/\W/g, '');
-		}
-	};
-
 	$scope.fileChanged = function() {
 		var input = $("#file");
 		input.parents('.input-group').find(':text').val(input.val().replace(/\\/g, '/').replace(/.*\//, ''));
@@ -541,6 +544,58 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 .controller('ProgressForm', function ($scope, $modalInstance) {
 	$scope.ok = function () {
 		$modalInstance.close();
+	};
+})
+
+.controller('UpdateForm', function ($scope, $rootScope, $modalInstance) {
+	$scope.updateVideo = JSON.parse(JSON.stringify($rootScope.activeVideo));
+	delete $scope.updateVideo.edit;
+	for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
+		if ($scope.updateVideo.permissions[i].username == $rootScope.$storage.username) {
+			$scope.updateVideo.permissions.splice(i, 1);
+			break;
+		}
+	}
+	$scope.ok = function () {
+		$rootScope.socket.emit('update', $scope.updateVideo);
+		$modalInstance.close();
+	};
+})
+
+.directive('viewers', function() {
+	return {
+		scope: {
+            list: '='
+        },
+		replace: true,
+		restrict: 'E',
+		template: '' +
+			'<div>' + 
+				'<div style="padding-bottom: 20px">' + 
+					'<button class="btn btn-default" ng-click="list.push({username: \'\'})">Add Viewer</button>' + 
+				'</div>' + 
+				'<table ng-if="list.length > 0" class="table table-striped">' + 
+					'<tr>' + 
+						'<td>Viewer</td>' + 
+						'<td align="right" style="padding-right: 25px">Action</td>' + 
+					'</tr>' + 
+					'<tr ng-repeat="user in list">' + 
+						'<td>' + 
+							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">' + 
+						'</td>' + 
+						'<td align="right">' + 
+							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' + 
+						'</td>' + 
+					'</tr>' + 
+				'</table>' + 
+			'</div>',
+		controller: function($scope) {
+			$scope.checkViewers = function () {
+				for (var i = 0; i < $scope.list.length; i++) {
+					$scope.list[i].username = $scope.list[i].username.replace(/\W/g, '');
+				}
+			};
+		}
 	};
 })
 
