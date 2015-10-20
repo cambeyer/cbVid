@@ -3,5 +3,6 @@
 		<div class="player"></div>
 		<h3 style="margin-bottom: 20px">{{activeVideo.details.original}}</h2>
 		<h5 style="margin-bottom: 50px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h4>
+		<div ng-if="activeVideo.edit"><button class="btn btn-default" ng-click="update()">Update</button></div>
 	</div>
 </div>

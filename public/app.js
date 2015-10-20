@@ -92,6 +92,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		}
 	});
+	
+	$rootScope.$watch(function () {return $rootScope.$storage.sessionNumber}, function (newValue, oldValue) {
+		if (newValue !== oldValue) {
+			if (newValue && !oldValue) {
+				$rootScope.verify();
+			} else if (oldValue && !newValue) {
+				VideoList.reset();
+				EncryptService.reset();
+				$state.go('auth');				
+			}
+		}
+	});
 
 	$rootScope.logout = function () {
 		$rootScope.socket.emit('logout', UserObj.getUser({ verification: EncryptService.encrypt('logout') }));
@@ -99,6 +111,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.socket.on('logout', function(msg) {
 		if ($rootScope.$storage.username == msg.username && $rootScope.$storage.sessionNumber == msg.session) {
+			VideoList.reset();
 			$localStorage.$reset();
 			EncryptService.reset();
 			$state.go('auth');
@@ -149,12 +162,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.verify();
 	}
 
-	$document.ready(function (){
-		$('#username').focus();
-		if ($rootScope.$storage.username) {
-			$('#password').focus();
-		}
-	});
+	$('#username').focus();
+	if ($rootScope.$storage.username) {
+		$('#password').focus();
+	}
 
 	$scope.login = function () {
 		if ($rootScope.$storage.username && $rootScope.credentials.password) {
@@ -535,8 +546,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .service('VideoList', function($q, $rootScope, $timeout, $state) {
 	this.promise;
-	$rootScope.fetched = false;
-	$rootScope.videoList = [];
+	this.reset = function () {
+		$rootScope.fetched = false;
+		$rootScope.videoList = [];	
+	};
+	this.reset();
 	this.getList = function() {
 		this.promise = $q.defer();
 		if ($rootScope.fetched) {
@@ -603,10 +617,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .service('EncryptService', function ($rootScope) {
-    this.encryptedPhrases = {};
+    this.encryptedPhrases;
     this.reset = function() {
     	this.encryptedPhrases = {};
     };
+    this.reset();
 	this.encrypt = function (text) {
 		if (!this.encryptedPhrases[text]) {
 		    /*global CryptoJS*/

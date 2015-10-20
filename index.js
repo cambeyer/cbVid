@@ -349,7 +349,7 @@ var encrypt = function(username, sessionNumber, text, disregardVerification) {
 var sendList = function (username, socket) {
 	var vidList = {};
 	vidList['username'] = username;
-	db.videos.find({ permissions: { username: username, isowner: "true" } }, { permissions: 0, _id: 0 }, function (err, videos) {
+	db.videos.find({ permissions: { username: username, isowner: "true" } }, { _id: 0 }, function (err, videos) {
 		if (!err) {
 			vidList['edit'] = videos;
 			db.videos.find({ permissions: { username: username, isowner: "false" } }, { permissions: 0, _id: 0 }, function (err, videos) {
