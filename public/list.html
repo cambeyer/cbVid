@@ -10,8 +10,8 @@
 					<button ng-if="!video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(video.filename)">
 						<span class="glyphicon glyphicon-remove"></span>
 					</button>
-					<span style="cursor: pointer" ng-class="{'activevideo': video.filename == activeVideo.filename, 'newvideo' : video.new }" ng-bind="video.details.original" ui-sref="cbvid.list({ filename: video.filename })">
-					</span>
+					<span ng-show="video.filename == activeVideo.filename" class="activevideo" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original"></span>
+					<span ng-show="video.filename !== activeVideo.filename" style="cursor: pointer" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original" ui-sref="cbvid.list({ filename: video.filename })"></span>
 				</li>
 			</ul>
 		</div>

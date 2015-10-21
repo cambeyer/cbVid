@@ -442,14 +442,24 @@ io.on('connection', function (socket) {
 		if (updateVideo) {
 			updateVideo = JSON.parse(updateVideo);
 			updateVideo['permissions'].push({ username: updReq.username, isowner: "true" });
-			db.videos.update({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, updateVideo, function (err) {
+			db.videos.findOne({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, { _id: 0 }, function (err, video) {
 				if (!err) {
-					for (var i = 0; i < updateVideo.permissions.length; i++) {
-						console.log("Sending video list");
-						sendList(updateVideo.permissions[i].username);
-					}
-				} else {
-					console.log("DB update error");
+					db.videos.update({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, updateVideo, {}, function (err) {
+						if (!err) {
+							var sent = {};
+							for (var i = 0; i < video.permissions.length; i++) {
+								sendList(video.permissions[i].username);
+								sent[video.permissions[i].username] = true;
+							}
+							for (var i = 0; i < updateVideo.permissions.length; i++) {
+								if (!sent[updateVideo.permissions[i].username]) {
+									sendList(updateVideo.permissions[i].username);
+								}
+							}
+						} else {
+							console.log("DB update error " + err);
+						}
+					});
 				}
 			});
 		}

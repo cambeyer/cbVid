@@ -92,7 +92,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		}
 	});
-	
+
 	$rootScope.$watch(function () {return $rootScope.$storage.sessionNumber}, function (newValue, oldValue) {
 		if (newValue !== oldValue) {
 			if (newValue && !oldValue) {
@@ -100,7 +100,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			} else if (oldValue && !newValue) {
 				VideoList.reset();
 				EncryptService.reset();
-				$state.go('auth');				
+				$state.go('auth');
 			}
 		}
 	});
@@ -125,11 +125,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
-		//console.log(fromState.name + " to " + toState.name);
+		console.log(fromState.name + " to " + toState.name);
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
 				$rootScope.pendingState = String(toState.name);
-				$rootScope.pendingParameters = JSON.parse(JSON.stringify(toParams));
+				$rootScope.pendingParameters = JSON.parse(angular.toJson(toParams));
 				event.preventDefault();
 				$state.go('auth');
 				return;
@@ -137,7 +137,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if ($rootScope.pendingState) {
 				event.preventDefault();
 				var newDest = String($rootScope.pendingState);
-				var newParams = JSON.parse(JSON.stringify($rootScope.pendingParameters));
+				var newParams = JSON.parse(angular.toJson($rootScope.pendingParameters));
 				$rootScope.pendingState = undefined;
 				$rootScope.pendingParameters = undefined;
 				$state.go(newDest, newParams);
@@ -274,7 +274,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			oData.append("username", $rootScope.$storage.username);
 			oData.append("session", $rootScope.$storage.sessionNumber);
 			oData.append("date", EncryptService.encrypt(Date.now().toString()));
-			oData.append("viewers", JSON.stringify($rootScope.viewers));
+			oData.append("viewers", angular.toJson($rootScope.viewers));
 			$rootScope.viewers = [];
 			oData.append("file", document.getElementById("file").files[0]);
 			var filename = document.getElementById("file").files[0].name;
@@ -371,7 +371,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			return $sce.trustAsResourceUrl("./download.mp4?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
 	};
-	
+
 	$scope.showUpdateDialog = function () {
 		$scope.progressModal = $modal.open({
 			animation: true,
@@ -512,7 +512,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			torrentReq['username'] = $rootScope.$storage.username;
 			torrentReq['session'] = $rootScope.$storage.sessionNumber;
 			torrentReq['torrentLink'] = EncryptService.encrypt($scope.custom.magnet);
-			torrentReq['viewers'] = JSON.stringify($rootScope.viewers);
+			torrentReq['viewers'] = angular.toJson($rootScope.viewers);
 			$rootScope.viewers = [];
 			$scope.custom.magnet = "";
 			$rootScope.socket.emit('torrent', torrentReq);
@@ -526,7 +526,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			ingestReq['username'] = $rootScope.$storage.username;
 			ingestReq['session'] = $rootScope.$storage.sessionNumber;
 			ingestReq['ingestLink'] = EncryptService.encrypt($scope.custom.ingest);
-			ingestReq['viewers'] = JSON.stringify($rootScope.viewers);
+			ingestReq['viewers'] = angular.toJson($rootScope.viewers);
 			$rootScope.viewers = [];
 			$scope.custom.ingest = "";
 			$rootScope.socket.emit('ingest', ingestReq);
@@ -548,8 +548,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('UpdateForm', function ($scope, $rootScope, $modalInstance, UserObj, EncryptService) {
-	$scope.updateVideo = JSON.parse(JSON.stringify($rootScope.activeVideo));
+	$scope.updateVideo = JSON.parse(angular.toJson($rootScope.activeVideo));
 	delete $scope.updateVideo.edit;
+	delete $scope.updateVideo.new;
 	for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
 		if ($scope.updateVideo.permissions[i].username == $rootScope.$storage.username) {
 			$scope.updateVideo.permissions.splice(i, 1);
@@ -557,7 +558,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	}
 	$scope.ok = function () {
-		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(JSON.stringify($scope.updateVideo)) }));
+		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
 		$modalInstance.close();
 	};
 })
@@ -570,24 +571,24 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		replace: true,
 		restrict: 'E',
 		template: '' +
-			'<div>' + 
-				'<table ng-if="list.length > 0" class="table table-striped">' + 
-					'<tr>' + 
-						'<td>Viewer</td>' + 
-						'<td align="right" style="padding-right: 25px">Action</td>' + 
-					'</tr>' + 
-					'<tr ng-repeat="user in list">' + 
-						'<td>' + 
-							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">' + 
-						'</td>' + 
-						'<td align="right" style="padding-right: 0px">' + 
-							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' + 
-						'</td>' + 
-					'</tr>' + 
-				'</table>' + 
-				'<div style="padding-bottom: 20px; text-align: right">' + 
-					'<button class="btn btn-primary" ng-click="list.push({username: \'\'})">+Viewer</button>' + 
-				'</div>' + 
+			'<div>' +
+				'<table ng-if="list.length > 0" class="table table-striped">' +
+					'<tr>' +
+						'<td>Viewer</td>' +
+						'<td align="right" style="padding-right: 25px">Action</td>' +
+					'</tr>' +
+					'<tr ng-repeat="user in list">' +
+						'<td>' +
+							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">' +
+						'</td>' +
+						'<td align="right" style="padding-right: 0px">' +
+							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' +
+						'</td>' +
+					'</tr>' +
+				'</table>' +
+				'<div style="padding-bottom: 20px; text-align: right">' +
+					'<button class="btn btn-primary" ng-click="list.push({username: \'\', isowner: \'false\'})">+Viewer</button>' +
+				'</div>' +
 			'</div>',
 		controller: function($scope) {
 			$scope.checkViewers = function () {
@@ -603,7 +604,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	this.promise;
 	this.reset = function () {
 		$rootScope.fetched = false;
-		$rootScope.videoList = [];	
+		$rootScope.videoList = [];
 	};
 	this.reset();
 	this.getList = function() {
@@ -623,7 +624,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				videos.edit[i].edit = true;
 				for (var j = 0; j < $rootScope.videoList.length; j++) {
 					if (videos.edit[i].filename == $rootScope.videoList[j].filename) {
-						$rootScope.videoList[j] = videos.edit[i];
+						delete $rootScope.videoList[j].permissions;
+						delete $rootScope.videoList[j].remove;
+						$.extend(true, $rootScope.videoList[j], videos.edit[i]);
 						videos.edit[i].used = true;
 						break;
 					}
@@ -638,7 +641,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				videos.view[i].edit = false;
 				for (var j = 0; j < $rootScope.videoList.length; j++) {
 					if (videos.view[i].filename == $rootScope.videoList[j].filename) {
-						$rootScope.videoList[j] = videos.view[i];
+						delete $rootScope.videoList[j].permissions;
+						delete $rootScope.videoList[j].remove;
+						$.extend(true, $rootScope.videoList[j], videos.view[i]);
 						videos.view[i].used = true;
 						break;
 					}
