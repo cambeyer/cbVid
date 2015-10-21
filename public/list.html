@@ -1,7 +1,7 @@
 <div class="container-fluid" style="height: 100%">
 	<div class="row">
 		<div ui-view></div>
-		<div ng-show="!(videoList | isEmpty)" class="col-lg-6">
+		<div ng-show="!(videoList | isEmpty)" class="col-lg-5">
 			<ul class="example-animate-container">
 				<li ng-repeat="video in videoList | orderBy: 'details.original'" class="animate-repeat ellipsis">
 					<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
