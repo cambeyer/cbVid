@@ -547,7 +547,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 })
 
-.controller('UpdateForm', function ($scope, $rootScope, $modalInstance) {
+.controller('UpdateForm', function ($scope, $rootScope, $modalInstance, UserObj, EncryptService) {
 	$scope.updateVideo = JSON.parse(JSON.stringify($rootScope.activeVideo));
 	delete $scope.updateVideo.edit;
 	for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
@@ -557,7 +557,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	}
 	$scope.ok = function () {
-		$rootScope.socket.emit('update', $scope.updateVideo);
+		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(JSON.stringify($scope.updateVideo)) }));
 		$modalInstance.close();
 	};
 })

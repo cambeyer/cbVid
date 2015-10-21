@@ -437,6 +437,23 @@ io.on('connection', function (socket) {
 			}
 		});
 	});
+	socket.on('update', function(updReq) {
+		var updateVideo = decrypt(updReq.username, updReq.session, updReq.updateVideo);
+		if (updateVideo) {
+			updateVideo = JSON.parse(updateVideo);
+			updateVideo['permissions'].push({ username: updReq.username, isowner: "true" });
+			db.videos.update({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, updateVideo, function (err) {
+				if (!err) {
+					for (var i = 0; i < updateVideo.permissions.length; i++) {
+						console.log("Sending video list");
+						sendList(updateVideo.permissions[i].username);
+					}
+				} else {
+					console.log("DB update error");
+				}
+			});
+		}
+	});
 	socket.on('delete', function (delReq) {
 		var md5 = decrypt(delReq.username, delReq.session, delReq.file);
 		if (md5) {
