@@ -225,7 +225,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.credentials.password = "";
 			} else {
 				$scope.error = false;
-				$rootScope.verify();
 			}
 		});
 	});
