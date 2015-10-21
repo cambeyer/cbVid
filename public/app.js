@@ -125,7 +125,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
-		console.log(fromState.name + " to " + toState.name);
+		//console.log(fromState.name + " to " + toState.name);
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
 				$rootScope.pendingState = String(toState.name);
