@@ -382,6 +382,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 
 	$scope.setVideo = function () {
+		$('video').each(function() {
+			$($(this)[0]).attr('src', '');
+			$(this)[0].pause();
+			$(this)[0].load();
+		});
 		$("#flow").remove();
 		if ($rootScope.activeVideo.filename) {
 			$('<div/>', { id: 'flow' }).appendTo('.player');
