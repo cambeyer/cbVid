@@ -431,17 +431,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
 		if ($rootScope.activeVideo) {
-			$rootScope.setTitle($rootScope.activeVideo.details.original);
 			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
-			if (newValue.filename !== oldValue.filename) {
-				$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
-					$state.go('cbvid.list.player');
-				});
-			}
+			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
+				$state.go('cbvid.list.player');
+			});
 		} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
 			$state.go('cbvid.list');
 		}
-	}, true);
+	});
 
 	$scope.syncURL = function() {
 		var found = false;
@@ -568,6 +565,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$modalInstance.close();
 	};
 	$scope.ok = function () {
+		$rootScope.setTitle(updateVideo.details.original);
 		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
 		$modalInstance.close();
 	};
