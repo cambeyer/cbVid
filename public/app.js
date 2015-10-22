@@ -433,9 +433,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if ($rootScope.activeVideo) {
 			$rootScope.setTitle($rootScope.activeVideo.details.original);
 			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
-			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
-				$state.go('cbvid.list.player');
-			});
+			if (newValue.filename !== oldValue.filename) {
+				$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
+					$state.go('cbvid.list.player');
+				});
+			}
 		} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
 			$state.go('cbvid.list');
 		}
