@@ -21,9 +21,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			resolve: {
 				videos: function(VideoList, $rootScope, $stateParams, UserObj, EncryptService) {
 					$rootScope.params = $stateParams;
-					if (!$rootScope.fetched) {
-						$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
-					}
+					$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
 					return VideoList.getList();
 				}
 			}
@@ -606,14 +604,15 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .service('VideoList', function($q, $rootScope, $timeout, $state) {
 	this.promise;
+	this.fetched;
 	this.reset = function () {
-		$rootScope.fetched = false;
+		this.fetched = false;
 		$rootScope.videoList = [];
 	};
 	this.reset();
 	this.getList = function() {
 		this.promise = $q.defer();
-		if ($rootScope.fetched) {
+		if (this.fetched) {
 			this.promise.resolve($rootScope.videoList);
 		}
 		return this.promise.promise;
@@ -672,10 +671,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				}, 2000);
 			}
 			//$rootScope.videoList = [].concat($rootScope.videoList.edit).concat($rootScope.videoList.view);
-			if (!$rootScope.fetched) {
+			if (!this.fetched) {
 				this.promise.resolve($rootScope.videoList);
 			}
-			$rootScope.fetched = true;
+			this.fetched = true;
 		}
 	};
 })
