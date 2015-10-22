@@ -358,7 +358,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, $modal, EncryptService) {
-	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
 
 	$scope.videoString = function (videoFile) {
@@ -432,6 +431,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
 		if ($rootScope.activeVideo) {
+			$rootScope.setTitle($rootScope.activeVideo.details.original);
 			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
 			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
 				$state.go('cbvid.list.player');
@@ -439,7 +439,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
 			$state.go('cbvid.list');
 		}
-	});
+	}, true);
 
 	$scope.syncURL = function() {
 		var found = false;
