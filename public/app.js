@@ -358,6 +358,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, $modal, EncryptService) {
+	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
 
 	$scope.videoString = function (videoFile) {
@@ -565,7 +566,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$modalInstance.close();
 	};
 	$scope.ok = function () {
-		$rootScope.setTitle(updateVideo.details.original);
+		$rootScope.setTitle($scope.updateVideo.details.original);
 		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
 		$modalInstance.close();
 	};
