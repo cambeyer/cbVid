@@ -415,9 +415,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .controller('listController', function ($scope, $rootScope, $state, $stateParams, $timeout, $document, EncryptService, UserObj) {
 
-	$scope.deleteVideo = function (filename) {
+	$scope.deleteVideo = function (filename, callback) {
 		if (confirm("Do you really want to delete this video?")) {
 			$rootScope.socket.emit('delete', UserObj.getUser({ file: EncryptService.encrypt(filename) }));
+			if (callback) {
+				callback();
+			}
 		}
 	};
 
@@ -559,6 +562,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			break;
 		}
 	}
+	$scope.close = function() {
+		$modalInstance.close();
+	};
 	$scope.ok = function () {
 		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
 		$modalInstance.close();

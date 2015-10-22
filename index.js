@@ -443,7 +443,7 @@ io.on('connection', function (socket) {
 			updateVideo = JSON.parse(updateVideo);
 			updateVideo['permissions'].push({ username: updReq.username, isowner: "true" });
 			db.videos.findOne({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, { _id: 0 }, function (err, video) {
-				if (!err) {
+				if (!err && video) {
 					db.videos.update({filename: updateVideo.filename, permissions: { username: updReq.username, isowner: "true" }}, updateVideo, {}, function (err) {
 						if (!err) {
 							var sent = {};

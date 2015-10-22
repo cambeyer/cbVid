@@ -85,6 +85,9 @@
 		<viewers list="updateVideo.permissions"></viewers>
 	</div>
 	<div class="modal-footer">
+		<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm pull-left" ng-click="deleteVideo(updateVideo.filename, close)">
+			<span class="glyphicon glyphicon-trash"></span>
+		</button>
 		<button class="btn btn-primary" type="button" ng-click="ok()">Save</button>
 	</div>
 </script>
