@@ -3,7 +3,8 @@
 		<div ui-view class="col-lg-7"></div>
 		<div class="col-lg-5">
 			<ul class="example-animate-container">
-				<li ng-repeat="video in videoList | orderBy: 'details.original'" class="animate-repeat ellipsis">
+				<li ng-show="search.text"><h3 style="margin-top: 0px">Search: {{search.text}}</h3></li>
+				<li ng-repeat="video in videoList | filter:search.text | orderBy: 'details.original'" class="animate-repeat ellipsis">
 					<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
 						<span class="glyphicon glyphicon-trash"></span>
 					</button>

@@ -98,6 +98,11 @@
 				<img alt="cbVid" style="max-height: 23px" src="logo.png" ui-sref="cbvid.home">
 			</a>
 		</div>
+		<div class="navbar-form navbar-left" role="search">
+			<div class="form-group">
+				<input type="search" class="form-control" ng-model="search.text" placeholder="Search">
+			</div>
+		</div>
 		<div>
 			<ul class="nav navbar-nav navbar-right">
 				<li style="margin-right: 20px"><a ng-if="!(procuring | isEmpty) || !(uploading | isEmpty) || !(processing | isEmpty)" ng-click="showProgressDialog()">Progress <img src="loading_2.gif" style="max-height: 23px"></a></li>

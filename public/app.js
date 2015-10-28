@@ -55,6 +55,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket = io();
 	$rootScope.pendingState;
 	$rootScope.pendingParameters;
+	$rootScope.search = {
+		text: ''
+	}
 
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
