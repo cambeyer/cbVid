@@ -15,7 +15,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         })
         
         .state('cbvid.home', {
-        	url: '/home',
+        	url: '/videos/',
         	templateUrl: 'home.html',
         	controller: 'homeController',
 			resolve: {
@@ -115,7 +115,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	});
 	
-	$rootScope.doTransition = function () {
+	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
+		$rootScope.checkTransition();
+	});
+	
+	$rootScope.checkTransition = function () {
 		if ($rootScope.activeVideo) {
 			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
 			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
@@ -125,10 +129,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$state.go('cbvid.home');
 		}
 	};
-	
-	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
-		$rootScope.doTransition();
-	});
 	
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
 		var found = false;
@@ -171,7 +171,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
-		console.log(fromState.name + " to " + toState.name);
+		//console.log(fromState.name + " to " + toState.name);
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
 				$rootScope.pendingState = String(toState.name);
@@ -406,7 +406,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .controller('homeController', function ($scope, $rootScope, $state) {
 	$rootScope.setTitle("Home");
-	$rootScope.doTransition();
+	$rootScope.checkTransition();
 })
 
 .controller('playerController', function($scope, $rootScope, $state, $sce, $modal, EncryptService) {
@@ -486,7 +486,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		var found = false;
 		//if the url doesn't match the intended video, attempt to find that in the list of videos
 		for (var i = 0; i < $rootScope.videoList.length; i++) {
-			if ($rootScope.params.filename && $rootScope.videoList[i].filename == $rootScope.params.filename) {
+			if ($rootScope.videoList[i].filename == $rootScope.params.filename) {
 				$rootScope.activeVideo = $rootScope.videoList[i];
 				found = true;
 				break;
@@ -502,7 +502,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	};
 
-	if (!$rootScope.params.filename || (!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && $rootScope.params.filename && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
+	if ((!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && $rootScope.params.filename && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
 		//there is no active video, but there is a url -OR-
 		//there is an active video, but it doesn't match the given url
 		$scope.syncURL();
