@@ -495,7 +495,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if (!found) {
 			if ($rootScope.videoList.length > 0) {
 				//if there is at least one video the user has access to, default to that in lieu of the intended video
-				$rootScope.activeVideo = $rootScope.videoList[0];
+				if ($rootScope.activeVideo && $rootScope.activeVideo.filename !== $rootScope.videoList[0].filename) {
+					$rootScope.activeVideo = $rootScope.videoList[0];
+				} else {
+					$rootScope.checkTransition();
+				}
 			} else {
 				$rootScope.activeVideo = undefined;
 			}
