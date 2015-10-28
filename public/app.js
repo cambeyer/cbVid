@@ -131,19 +131,27 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
-		if (VideoList.fetched) {
-			var found = false;
-			//this logic is for when a video is deleted and that's the one you were watching.
-			if ($rootScope.activeVideo) {
-				for (var i = 0; i < $rootScope.videoList.length; i++) {
-					if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
-						found = true;
-						break;
-					}
+		var found = false;
+		//this logic is for when a video is deleted and that's the one you were watching.
+		if ($rootScope.activeVideo) {
+			for (var i = 0; i < $rootScope.videoList.length; i++) {
+				if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
+					found = true;
+					break;
 				}
 			}
-			if (!found) {
+		}
+		if (!found) {
+			if ($rootScope.activeVideo) {
 				$rootScope.activeVideo = undefined;
+			} else if ($rootScope.videoList.length > 0) {
+				try {
+					if (!$rootScope.params.filename) {
+						$rootScope.activeVideo = $rootScope.videoList[0];
+					}
+				} catch (e) {
+					$rootScope.activeVideo = $rootScope.videoList[0];
+				}
 			}
 		}
 	}, true);
@@ -436,6 +444,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 		$("#flow").remove();
 		if ($rootScope.activeVideo.filename) {
+			delete $rootScope.params.filename;
 			$('<div/>', { id: 'flow' }).appendTo('.player');
 			$("#flow").flowplayer({
 				fullscreen: true,
@@ -498,7 +507,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					$rootScope.checkTransition();
 				}
 			} else {
-				$rootScope.activeVideo = undefined;
+				if ($rootScope.activeVideo) {
+					$rootScope.activeVideo = undefined;
+				} else {
+					$rootScope.checkTransition();
+				}
 			}
 		}
 	};
