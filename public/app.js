@@ -131,21 +131,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
-		var found = false;
-		//this logic is for when a video is deleted and that's the one you were watching.
-		if ($rootScope.activeVideo) {
-			for (var i = 0; i < $rootScope.videoList.length; i++) {
-				if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
-					found = true;
-					break;
+		if (VideoList.fetched) {
+			var found = false;
+			//this logic is for when a video is deleted and that's the one you were watching.
+			if ($rootScope.activeVideo) {
+				for (var i = 0; i < $rootScope.videoList.length; i++) {
+					if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
+						found = true;
+						break;
+					}
 				}
 			}
-		}
-		if (!found) {
-			if ($rootScope.videoList.length > 0) {
-				//if there is at least one video the user has access to, default to that in lieu of the intended video
-				$rootScope.activeVideo = $rootScope.videoList[0];
-			} else {
+			if (!found) {
 				$rootScope.activeVideo = undefined;
 			}
 		}
