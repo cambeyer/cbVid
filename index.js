@@ -485,6 +485,9 @@ io.on('connection', function (socket) {
 						if (!err) {
 							console.log("Removed access for " + remReq.username + " to " + md5);
 							sendList(remReq.username);
+							for (var i = 0; i < video.permissions.length; i++) {
+								sendList(video.permissions[i].username);
+							}
 						}
 					});
 				}

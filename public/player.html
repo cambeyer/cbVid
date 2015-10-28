@@ -1,15 +1,13 @@
-<div ng-show="!(videoList | isEmpty)" class="col-lg-7">
-	<div style="text-align: center">
-		<div class="player"></div>
-		<h3 style="margin-bottom: 20px">
-			<button style="margin-bottom: 4px; margin-right: 5px" type="button" class="btn btn-default btn-sm" ng-click="showUpdateDialog()" ng-if="activeVideo.edit">
-				<span class="glyphicon glyphicon-edit"></span>
-			</button>
-			<button style="margin-bottom: 4px; margin-right: 5px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(activeVideo.filename)" ng-if="!activeVideo.edit">
-				<span class="glyphicon glyphicon-remove"></span>
-			</button>
-			{{activeVideo.details.original}}
-		</h3>
-		<h5 style="margin-bottom: 20px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h5>
-	</div>
+<div style="text-align: center">
+	<div class="player"></div>
+	<h3 style="margin-bottom: 20px">
+		<button style="margin-bottom: 4px; margin-right: 5px" type="button" class="btn btn-default btn-sm" ng-click="showUpdateDialog()" ng-if="activeVideo.edit">
+			<span class="glyphicon glyphicon-edit"></span>
+		</button>
+		<button style="margin-bottom: 4px; margin-right: 5px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(activeVideo.filename)" ng-if="!activeVideo.edit">
+			<span class="glyphicon glyphicon-remove"></span>
+		</button>
+		{{activeVideo.details.original}}
+	</h3>
+	<h5 style="margin-bottom: 20px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h5>
 </div>

@@ -13,6 +13,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
             templateUrl: 'cbvid.html',
 			controller: 'containerController'
         })
+        
+        .state('cbvid.home', {
+        	url: '/home',
+        	templateUrl: 'home.html',
+        	controller: 'homeController'
+        })
 
 		.state('cbvid.list', {
 			url: '/videos/:filename',
@@ -235,7 +241,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('containerController', function($scope, $rootScope, $modal, $state, EncryptService) {
-	$rootScope.setTitle("Home");
 	$rootScope.viewers = [];
 	$rootScope.activeVideo;
 
@@ -357,6 +362,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 })
 
+.controller('homeController', function ($scope, $rootScope) {
+	$rootScope.setTitle("Home");
+})
+
 .controller('playerController', function($scope, $rootScope, $state, $stateParams, $sce, $modal, EncryptService) {
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
@@ -436,8 +445,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
 				$state.go('cbvid.list.player');
 			});
-		} else if ($state.current.name == 'cbvid.list.player') { //if there is no active video and we were in the player state, revert back to the generic list
-			$state.go('cbvid.list');
+		} else { //if there is no active video and we were in the player state, revert back to the generic list
+			$state.go('cbvid.home');
 		}
 	});
 
@@ -666,6 +675,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 			for (var i = 0; i < $rootScope.videoList.length; i++) {
 				if ($rootScope.videoList[i].remove) {
+					$rootScope.videoList[i] = undefined;
 					$rootScope.videoList.splice(i, 1);
 					i--;
 				}
