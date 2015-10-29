@@ -57,11 +57,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.pendingParameters;
 	$rootScope.search = {
 		text: ''
-	}
+	};
 
-	$rootScope.uploading;
-	$rootScope.processing;
-	$rootScope.procuring;
+	$rootScope.uploading = {};
+	$rootScope.processing = {};
+	$rootScope.procuring = {};
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
