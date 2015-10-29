@@ -9,6 +9,7 @@ var request = require('request');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
+var ytdl = require('ytdl-core');
 var crypto = require('crypto');
 var node_cryptojs = require('node-cryptojs-aes');
 var CryptoJS = node_cryptojs.CryptoJS;
@@ -587,6 +588,13 @@ io.on('connection', function (socket) {
 
 				var downloaded = 0;
 				var filesize;
+				var stream;
+				if (sessionVars.ingestLink.split('youtube.com').length > 1) {
+					console.log("Downloading from YouTube");
+					stream = ytdl(String(sessionVars.ingestLink), { filter: function(format) { return format.container === 'mp4'; } });
+				} else {
+					stream = request(sessionVars.ingestLink);
+				}
 
 				var filename = sessionVars.ingestLink.split("/")[sessionVars.ingestLink.split("/").length - 1].split("?")[0];
 				filename = filename ? filename : "ingested";
@@ -605,8 +613,10 @@ io.on('connection', function (socket) {
 				}
 
 				var hash = crypto.createHash('md5');
-				var stream = request(sessionVars.ingestLink);
 				var fstream = fs.createWriteStream(dir + filename);
+				stream.on('info', function(info) {
+					sessionVars.name = info.title;
+				});
 				stream.on('data', function (chunk) {
 					hash.update(chunk);
 					downloaded = downloaded + chunk.length;

@@ -59,9 +59,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		text: ''
 	}
 
-	$rootScope.uploading = {};
-	$rootScope.processing = {};
-	$rootScope.procuring = {};
+	$rootScope.uploading;
+	$rootScope.processing;
+	$rootScope.procuring;
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
@@ -205,6 +205,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.loading = false;
 	$scope.confirmPassword = false;
 	$rootScope.srpClient;
+	
+	$rootScope.uploading = {};
+	$rootScope.processing = {};
+	$rootScope.procuring = {};
+	
 	$rootScope.credentials = {
 		password: "",
 		passwordConfirm: ""
