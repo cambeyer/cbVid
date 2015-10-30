@@ -145,9 +145,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		}
 		if (!found) {
-			if ($rootScope.activeVideo) {
-				$rootScope.activeVideo = undefined;
-			} else if ($rootScope.videoList.length > 0) {
+			if ($rootScope.videoList.length > 0) {
 				try {
 					if (!$rootScope.params.filename) {
 						$rootScope.activeVideo = $rootScope.videoList[0];
@@ -155,6 +153,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				} catch (e) {
 					$rootScope.activeVideo = $rootScope.videoList[0];
 				}
+			} else {
+				$rootScope.activeVideo = undefined;
 			}
 		}
 	}, true);
