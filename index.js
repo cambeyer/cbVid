@@ -377,7 +377,7 @@ var fetchTorrentList = function(socket) {
 					var results = JSON.parse(body).torrent_results;
 					var final = [];
 					for (var i = 0; i < results.length; i++) {
-						if (results[i].category.indexOf("1080") >= 0) {
+						if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
 							final.push({title: results[i].title, download: results[i].download});
 						}
 					}
