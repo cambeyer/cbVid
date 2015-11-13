@@ -20,7 +20,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         	controller: 'homeController',
 			resolve: {
 				videos: function(VideoList, $rootScope, UserObj, EncryptService) {
-					$rootScope.socket.emit('listtorrent', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('listtorrent') }));
 					$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
 					return VideoList.getList();
 				}
@@ -65,6 +64,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.procuring = {};
 	
 	$rootScope.torrentList = [];
+	$rootScope.staleQuery = "";
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
@@ -304,9 +304,23 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 })
 
-.controller('containerController', function($scope, $rootScope, $modal, $state, EncryptService, UserObj) {
+.controller('containerController', function($scope, $rootScope, $modal, $state, $timeout, EncryptService, UserObj) {
 	$rootScope.viewers = [];
 	$rootScope.activeVideo;
+	var timer;
+	
+	$scope.searchtor = function() {
+		$timeout.cancel(timer);
+		if ($rootScope.staleQuery !== $rootScope.search.text) {
+			$rootScope.torrentList = [];
+		}
+		timer = $timeout(function() {
+			if (!$rootScope.staleQuery || $rootScope.staleQuery !== $rootScope.search.text) {
+				$rootScope.socket.emit('listtorrent', UserObj.getUser({ query: $rootScope.search.text, encryptedPhrase: EncryptService.encrypt('listtorrent') }));
+				$rootScope.staleQuery = $rootScope.search.text;
+			}
+		}, 2000);
+	};
 	
 	$scope.sendTorrent = function(torrentLink) {
 		$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt(torrentLink), viewers: [] }));

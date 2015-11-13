@@ -369,19 +369,24 @@ var sendList = function (username, socket) {
 	});
 };
 
-var fetchTorrentList = function(socket) {
+var fetchTorrentList = function(query, socket) {
 	request(torrentAPI + "get_token=get_token", function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			request(torrentAPI + "token=" + JSON.parse(body).token + "&mode=list&min_seeders=50&limit=100&category=movies&sort=seeders&format=json_extended", function (error, response, body) {
+			request(torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=movies&sort=seeders&format=json_extended", function (error, response, body) {
 				if (!error && response.statusCode == 200) {
 					var results = JSON.parse(body).torrent_results;
 					var final = [];
-					for (var i = 0; i < results.length; i++) {
-						if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
-							final.push({title: results[i].title, download: results[i].download});
+					if (results) {
+						for (var i = 0; i < results.length; i++) {
+							if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
+								final.push({title: results[i].title, download: results[i].download});
+							}
+						}
+					} else {
+						if (JSON.parse(body).error_code && JSON.parse(body).error_code !== 20) {
+							console.log(body);
 						}
 					}
-					console.log(final);
 					socket.emit('listtorrent', final);
 				}
 			});
@@ -536,7 +541,7 @@ io.on('connection', function (socket) {
 	});
 	socket.on('listtorrent', function(torReq) {
 		if (decrypt(torReq.username, torReq.session, torReq.encryptedPhrase) == "listtorrent") {
-			fetchTorrentList(socket);
+			fetchTorrentList(torReq.query, socket);
 		} else {
 			socket.emit('verifyok', 'false');
 		}
