@@ -20,6 +20,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         	controller: 'homeController',
 			resolve: {
 				videos: function(VideoList, $rootScope, UserObj, EncryptService) {
+					$rootScope.socket.emit('listtorrent', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('listtorrent') }));
 					$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
 					return VideoList.getList();
 				}
@@ -62,6 +63,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
 	$rootScope.procuring = {};
+	
+	$rootScope.torrentList = [];
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
@@ -175,6 +178,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('list', function (videoList) {
 		$rootScope.$apply(function() {
 			VideoList.load(videoList);
+		});
+	});
+	
+	$rootScope.socket.on('listtorrent', function (torrentList) {
+		$rootScope.$apply(function() {
+			$rootScope.torrentList = torrentList;
 		});
 	});
 
@@ -295,9 +304,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 })
 
-.controller('containerController', function($scope, $rootScope, $modal, $state, EncryptService) {
+.controller('containerController', function($scope, $rootScope, $modal, $state, EncryptService, UserObj) {
 	$rootScope.viewers = [];
 	$rootScope.activeVideo;
+	
+	$scope.sendTorrent = function(torrentLink) {
+		$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt(torrentLink), viewers: [] }));
+		$scope.showProgressDialog();
+	};
 
 	$scope.showUploadDialog = function () {
 		$scope.uploadModal = $modal.open({
@@ -374,10 +388,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 	});
 
-	$rootScope.socket.on('processing', function (md5) {
+	$rootScope.socket.on('processing', function (obj) {
 		$scope.$apply(function () {
-			$rootScope.processing[md5] = {};
-			$rootScope.processing[md5].percent = 0;
+			$rootScope.processing[obj.md5] = {};
+			$rootScope.processing[obj.md5].percent = 0;
+			$rootScope.processing[obj.md5].name = obj.name;
+			$rootScope.processing[obj.md5].timestamp = "Initializing...";
 			$rootScope.sendSubscriptions();
 		});
 	});
@@ -531,7 +547,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	}
 })
 
-.controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService) {
+.controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService, UserObj) {
 
 	$scope.type = "file";
 	$scope.custom = {
@@ -559,28 +575,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.sendTorrent = function() {
 		if ($scope.custom.magnet) {
-			var torrentReq = {};
-			torrentReq['username'] = $rootScope.$storage.username;
-			torrentReq['session'] = $rootScope.$storage.sessionNumber;
-			torrentReq['torrentLink'] = EncryptService.encrypt($scope.custom.magnet);
-			torrentReq['viewers'] = angular.toJson($rootScope.viewers);
+			$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt($scope.custom.magnet), viewers: angular.toJson($rootScope.viewers) }));
 			$rootScope.viewers = [];
 			$scope.custom.magnet = "";
-			$rootScope.socket.emit('torrent', torrentReq);
 			$modalInstance.close(true);
 		}
 	};
 
 	$scope.sendIngest = function() {
 		if ($scope.custom.ingest) {
-			var ingestReq = {};
-			ingestReq['username'] = $rootScope.$storage.username;
-			ingestReq['session'] = $rootScope.$storage.sessionNumber;
-			ingestReq['ingestLink'] = EncryptService.encrypt($scope.custom.ingest);
-			ingestReq['viewers'] = angular.toJson($rootScope.viewers);
+			$rootScope.socket.emit('ingest', UserObj.getUser({ ingestLink: EncryptService.encrypt($scope.custom.ingest), viewers: angular.toJson($rootScope.viewers) }));
 			$rootScope.viewers = [];
 			$scope.custom.ingest = "";
-			$rootScope.socket.emit('ingest', ingestReq);
 			$modalInstance.close(true);
 		}
 	};

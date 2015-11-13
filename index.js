@@ -31,6 +31,8 @@ var done = [];
 
 var userKeys = {};
 
+var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
+
 var db = {};
 db.users = new nedb({ filename: dir + "users.db", autoload: true });
 db.users.persistence.setAutocompactionInterval(200000);
@@ -246,7 +248,7 @@ var transcode = function (file, sessionVars, engine) {
 				console.log("No progress has been made; killing the process.");
 				command.kill();
 			}
-		}, 30000);
+		}, 120000);
 };
 
 app.get('/download.mp4', function (req, res){
@@ -361,6 +363,30 @@ var sendList = function (username, socket) {
 					} else {
 						io.emit('list', vidList);
 					}
+				}
+			});
+		}
+	});
+};
+
+var fetchTorrentList = function(socket) {
+	request(torrentAPI + "get_token=get_token", function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			request(torrentAPI + "token=" + JSON.parse(body).token + "&mode=list&min_seeders=50&limit=100&category=movies&sort=seeders&format=json_extended", function (error, response, body) {
+				if (!error && response.statusCode == 200) {
+					var results = JSON.parse(body).torrent_results;
+					var final = [];
+					for (var i = 0; i < results.length; i++) {
+						if (results[i].category.indexOf("1080" < 0)) {
+							continue;
+						}
+						var temp = {};
+						temp.title = results[i].title;
+						temp.download = results[i].download;
+						final.push(temp);
+					}
+					console.log(final);
+					socket.emit('listtorrent', final);
 				}
 			});
 		}
@@ -512,6 +538,13 @@ io.on('connection', function (socket) {
 			socket.emit('verifyok', 'false');
 		}
 	});
+	socket.on('listtorrent', function(torReq) {
+		if (decrypt(torReq.username, torReq.session, torReq.encryptedPhrase) == "listtorrent") {
+			fetchTorrentList(socket);
+		} else {
+			socket.emit('verifyok', 'false');
+		}
+	});
 	socket.on('logout', function (logoutReq) {
 		if (decrypt(logoutReq.username, logoutReq.session, logoutReq.verification, true) == "logout") {
 			for (var i = 0; i < userKeys[logoutReq.username].keys.length; i++) {
@@ -569,7 +602,7 @@ io.on('connection', function (socket) {
 								}
 
 								sessionVars.ddate = String(Date.now());
-								socket.emit('processing', sessionVars.md5);
+								socket.emit('processing', {name: largestFile.name, md5: sessionVars.md5});
 								transcode(largestFile.createReadStream(), sessionVars, engine);
 							}
 						});
@@ -652,7 +685,7 @@ io.on('connection', function (socket) {
 						}
 					}
 					sessionVars.ddate = String(Date.now());
-					socket.emit('processing', sessionVars.md5);
+					socket.emit('processing', {name: sessionVars.name, md5: sessionVars.md5});
 					transcode(dir + filename, sessionVars);
 				});
 				stream.pipe(fstream);

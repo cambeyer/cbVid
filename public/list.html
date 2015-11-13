@@ -4,7 +4,7 @@
 		<div class="col-lg-5">
 			<ul class="example-animate-container">
 				<li ng-show="search.text"><h3 style="margin-top: 0px">Search: {{search.text}}</h3></li>
-				<li ng-show="((videoList | filter:search.text) | isEmpty)"><h3>No Results</h3></li>
+				<li ng-show="((videoList | filter:search.text) | isEmpty) && ((torrentList | filter:search.text) | isEmpty)"><h3>No Results</h3></li>
 				<li ng-repeat="video in videoList | filter:search.text | orderBy: 'details.original'" class="animate-repeat ellipsis">
 					<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
 						<span class="glyphicon glyphicon-trash"></span>
@@ -14,6 +14,12 @@
 					</button>
 					<span ng-show="video.filename == activeVideo.filename" class="activevideo" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original"></span>
 					<span ng-show="video.filename !== activeVideo.filename" style="cursor: pointer" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original" ui-sref="cbvid.list({ filename: video.filename })"></span>
+				</li>
+				<li ng-repeat="torrent in torrentList | filter:search.text | orderBy: 'name'" class="animate-repeat ellipsis">
+					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="alert(torrent.download)">
+						<span class="glyphicon glyphicon-cloud-download"></span>
+					</button>
+					<span ng-bind="torrent.name"></span>
 				</li>
 			</ul>
 		</div>
