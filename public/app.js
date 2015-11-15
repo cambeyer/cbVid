@@ -13,7 +13,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
             templateUrl: 'cbvid.html',
 			controller: 'containerController'
         })
-        
+
         .state('cbvid.home', {
         	url: '/videos/',
         	templateUrl: 'home.html',
@@ -62,7 +62,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
 	$rootScope.procuring = {};
-	
+
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
 
@@ -100,6 +100,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				username: $rootScope.$storage.username
 			});
 			EncryptService.reset();
+			$rootScope.search.text = '';
+			$rootScope.staleQuery = '';
 			$state.reload();
 		} else {
 			$rootScope.sendSubscriptions();
@@ -116,15 +118,17 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			} else if (oldValue && !newValue) {
 				VideoList.reset();
 				EncryptService.reset();
+				$rootScope.search.text = '';
+				$rootScope.staleQuery = '';
 				$state.go('auth');
 			}
 		}
 	});
-	
+
 	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
 		$rootScope.checkTransition();
 	});
-	
+
 	$rootScope.checkTransition = function () {
 		if ($rootScope.activeVideo) {
 			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
@@ -135,7 +139,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$state.go('cbvid.home');
 		}
 	};
-	
+
 	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
 		var found = false;
 		//this logic is for when a video is deleted and that's the one you were watching.
@@ -169,6 +173,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('logout', function(msg) {
 		if ($rootScope.$storage.username == msg.username && $rootScope.$storage.sessionNumber == msg.session) {
 			VideoList.reset();
+			$rootScope.search.text = '';
+			$rootScope.staleQuery = '';
 			$localStorage.$reset();
 			EncryptService.reset();
 			$state.go('auth');
@@ -180,7 +186,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			VideoList.load(videoList);
 		});
 	});
-	
+
 	$rootScope.socket.on('listtorrent', function (torrentList) {
 		$rootScope.$apply(function() {
 			$rootScope.torrentList = torrentList;
@@ -214,11 +220,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.loading = false;
 	$scope.confirmPassword = false;
 	$rootScope.srpClient;
-	
+
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
 	$rootScope.procuring = {};
-	
+
 	$rootScope.credentials = {
 		password: "",
 		passwordConfirm: ""
@@ -308,7 +314,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.viewers = [];
 	$rootScope.activeVideo;
 	var timer;
-	
+
 	$scope.searchtor = function() {
 		$timeout.cancel(timer);
 		if ($rootScope.staleQuery !== $rootScope.search.text) {
@@ -321,7 +327,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		}, 2000);
 	};
-	
+
 	$scope.sendTorrent = function(torrentLink) {
 		$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt(torrentLink), viewers: [] }));
 		$scope.showProgressDialog();
