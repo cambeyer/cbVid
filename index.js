@@ -372,15 +372,17 @@ var sendList = function (username, socket) {
 var fetchTorrentList = function(query, socket) {
 	request(torrentAPI + "get_token=get_token", function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			request(torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=movies&sort=seeders&format=json_extended", function (error, response, body) {
+			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
+			//console.log(torURL);
+			request(torURL, function (error, response, body) {
 				if (!error && response.statusCode == 200) {
 					var results = JSON.parse(body).torrent_results;
 					var final = [];
 					if (results) {
 						for (var i = 0; i < results.length; i++) {
-							if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
+							//if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
 								final.push({title: results[i].title, download: results[i].download});
-							}
+							//}
 						}
 					} else {
 						if (JSON.parse(body).error_code && JSON.parse(body).error_code !== 20) {
