@@ -444,6 +444,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if (percent >= 100) {
 				try {
 					delete relevantArr[msg.md5];
+					$rootScope.socket.emit('unsubscribe', msg.md5);
 					if (msg.type == "processing" && Object.keys($rootScope.processing).length == 0 && Object.keys($rootScope.procuring).length == 0 && Object.keys($rootScope.uploading).length == 0) {
 						$scope.progressModal.close();
 					}

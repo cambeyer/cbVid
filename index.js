@@ -517,7 +517,6 @@ io.on('connection', function (socket) {
 			if (done[i].md5 == md5) {
 				//console.log("File finished activity before client subscription; sending that information back to the client");
 				socket.emit('progress', { md5: md5, percent: 100, type: done[i].type });
-				done.splice(i, 1);
 				return;
 			}
 		}
@@ -525,6 +524,14 @@ io.on('connection', function (socket) {
 			socket.emit('progress', { md5: md5, percent: 0, type: 'processing' });
 		}
 		processing[md5] = socket;
+	});
+	socket.on('unsubscribe', function(md5) {
+		for (var i = 0; i < done.length; i++) {
+			if (done[i].md5 == md5) {
+				done.splice(i, 1);
+				return;
+			}
+		}	
 	});
 	socket.on('new', function (newUser) {
 		var userObj = {};
@@ -667,7 +674,9 @@ io.on('connection', function (socket) {
 						engine.on('ready', function() {
 							if (engine.files.length > 0) {
 								for (var i = 0; i < engine.files.length; i++) {
-									doTorrent(socket, JSON.parse(JSON.stringify(sessionVars)), engine.files[i]);
+									if (engine.files[i].length > 1000000) {
+										doTorrent(socket, JSON.parse(JSON.stringify(sessionVars)), engine.files[i]);
+									}
 								}
 							}
 						});
