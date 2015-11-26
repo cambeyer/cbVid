@@ -33,27 +33,51 @@ var userKeys = {};
 
 var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
 
+var DB_EXT = '.db';
+
 var db = {};
-db.users = new nedb({ filename: dir + "users.db", autoload: true });
+db.users = new nedb({ filename: dir + "users" + DB_EXT, autoload: true });
 db.users.persistence.setAutocompactionInterval(200000);
 db.users.ensureIndex({ fieldName: 'username', unique: true });
 
-db.videos = new nedb({ filename: dir + "videos.db", autoload: true});
+db.videos = new nedb({ filename: dir + "videos" + DB_EXT, autoload: true});
 db.videos.persistence.setAutocompactionInterval(200000);
 db.videos.ensureIndex({ fieldName: 'filename', unique: true });
 
-var getFiles = function (dir, files_) {
+var getFiles = function (dir, recurse, files_) {
     files_ = files_ || [];
     var files = fs.readdirSync(dir);
     for (var i in files) {
         var name = dir + '/' + files[i];
         if (fs.statSync(name).isDirectory()) {
-            getFiles(name, files_);
+        	if (recurse) {
+            	getFiles(name, recurse, files_);
+        	}
         } else {
             files_.push(name);
         }
     }
     return files_;
+};
+
+var cleanup = function() {
+	var files = getFiles(dir);
+	for (var i = 0; i < files.length; i++) {
+		if (files[i].split(DB_EXT).length <= 1) {
+			checkRemove(files[i].split('/')[files[i].split('/').length - 1]);
+		}
+	}
+};
+
+var checkRemove = function(name) {
+	db.videos.find({ filename: name }, function(err, videos) {
+		if (!err && videos.length == 0) {
+			try {
+				console.log("Removing " + dir + name);
+				fs.unlinkSync(dir + name);
+			} catch (e) { }
+		}
+	});
 };
 
 app.route('/upload').post(function (req, res, next) {
@@ -699,4 +723,5 @@ io.on('connection', function (socket) {
 
 http.listen(80, "0.0.0.0", function (){
 	console.log('listening on *:80');
+	cleanup();
 });
