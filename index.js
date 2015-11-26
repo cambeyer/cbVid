@@ -432,7 +432,7 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 			exists = false;
 		}
 	}
-	
+
 	socket.emit('procuring', filename);
 
 	var hash = crypto.createHash('md5');
@@ -451,7 +451,7 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 	});
 	fstream.on('close', function () {
 		sessionVars.md5 = hash.digest('hex');
-		
+		/*
 		var found = false;
 		for (var temp in processing) {
 			if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
@@ -466,7 +466,7 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 		} else {
 			console.log("Another process is using the same torrent data.  Leaving intact.");
 		}
-		
+		*/
 		if (!socket.disconnected) {
 			socket.emit('progress', { md5: filename, percent: 100, type: 'procuring', name: sessionVars.name });
 		} else {
@@ -515,7 +515,7 @@ io.on('connection', function (socket) {
 				done.splice(i, 1);
 				return;
 			}
-		}	
+		}
 	});
 	socket.on('new', function (newUser) {
 		var userObj = {};
