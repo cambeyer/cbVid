@@ -275,6 +275,61 @@ var transcode = function (file, sessionVars, engine) {
 		}, 120000);
 };
 
+/*
+app.get('/stream.mp4', function (req, res){
+	var encryptedMagnet = atob(req.query.magnet);
+	var magnet = decrypt(req.query.username, req.query.session, encryptedMagnet);
+	if (magnet) {
+		try {
+			console.log("Initializing torrent request");
+			parseTorrent.remote(magnet, function (err, parsedTorrent) {
+				if (!err) {
+					magnet = parseTorrent.toMagnetURI(parsedTorrent);
+					var engine = torrentStream(magnet, {
+						verify: true,
+						dht: true,
+						tmp: dir
+					});
+					engine.on('ready', function() {
+						if (engine.files.length > 0) {
+							var largestFile = engine.files[0];
+							for (var i = 1; i < engine.files.length; i++) {
+								if (engine.files[i].length > largestFile.length) {
+									largestFile = engine.files[i];
+								}
+							}
+							console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+							
+							if (req.headers.range) {
+								var range = req.headers.range;
+								var parts = range.replace(/bytes=/, "").split("-");
+								var partialstart = parts[0];
+								var partialend = parts[1];
+								
+								var start = parseInt(partialstart, 10);
+								var end = partialend ? parseInt(partialend, 10) : largestFile.length - 1;
+								var chunksize = (end-start)+1;
+
+								res.writeHead(206, { 'Content-Range': 'bytes ' + start + '-' + end + '/' + largestFile.length, 'Accept-Ranges': 'bytes', 'Content-Length': chunksize, 'Content-Type': 'video/mp4' });
+								largestFile.createReadStream({
+								    start: start,
+								    end: end
+								}).pipe(res);							
+							} else {
+								res.writeHead(200, { 'Content-Length': largestFile.length, 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes' });
+								largestFile.createReadStream().pipe(res);
+							}
+						}
+					});
+				}
+			});
+		} catch (e) {
+			console.log("Abandoned torrent due to an error");
+		}
+	}
+});
+*/
+
 app.get('/download.mp4', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
@@ -609,28 +664,66 @@ io.on('connection', function (socket) {
 									}
 								}
 								console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-								sessionVars.name = largestFile.name;
 
-								var md5 = sessionVars.torrentLink.split("xt=")[1].split("&")[0];
-								md5 = md5.split(":")[md5.split(":").length - 1];
-								md5 = crypto.createHash('md5').update(md5).digest('hex');
-								sessionVars.md5 = md5 ? md5 : "torrented";
-
+								var downloaded = 0;
+								var filesize = largestFile.length;
+								var stream = largestFile.createReadStream();
+				
+								var filename = largestFile.name;
+								filename = filename ? filename : "torrented";
+								sessionVars.name = String(filename);
+				
 								var num = 0;
 								var exists = true;
 								while (exists) {
 									try {
-										fs.statSync(dir + sessionVars.md5 + num);
+										fs.statSync(dir + filename + num);
 										num = num + 1;
 									} catch (e) {
-										sessionVars.md5 = sessionVars.md5 + num;
+										filename = filename + num;
 										exists = false;
 									}
 								}
-
-								sessionVars.ddate = String(Date.now());
-								socket.emit('processing', {name: largestFile.name, md5: sessionVars.md5});
-								transcode(largestFile.createReadStream(), sessionVars, engine);
+								
+								socket.emit('procuring', filename);
+				
+								var hash = crypto.createHash('md5');
+								var fstream = fs.createWriteStream(dir + filename);
+								stream.on('data', function (chunk) {
+									hash.update(chunk);
+									downloaded = downloaded + chunk.length;
+									var percent = downloaded / filesize * 100;
+									socket.emit('progress', { md5: filename, percent: percent, type: 'procuring', name: sessionVars.name });
+								});
+								stream.on('error', function(err) {
+									try {
+										fs.unlinkSync(dir + filename);
+									} catch (e) { }
+									console.log("Error streaming torrent " + err);
+								});
+								fstream.on('close', function () {
+									sessionVars.md5 = hash.digest('hex');
+									if (!socket.disconnected) {
+										socket.emit('progress', { md5: filename, percent: 100, type: 'procuring', name: sessionVars.name });
+									} else {
+										done.push({ md5: filename, type: 'procuring' });
+									}
+									var num = 0;
+									var exists = true;
+									while (exists) {
+										try {
+											fs.statSync(dir + sessionVars.md5 + num);
+											num = num + 1;
+										} catch (e) {
+											sessionVars.md5 = sessionVars.md5 + num;
+											exists = false;
+										}
+									}
+									sessionVars.ddate = String(Date.now());
+									socket.emit('processing', {name: sessionVars.name, md5: sessionVars.md5});
+									transcode(dir + filename, sessionVars);
+								});
+								stream.pipe(fstream);
 							}
 						});
 					}
