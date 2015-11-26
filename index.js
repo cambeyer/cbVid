@@ -143,7 +143,7 @@ app.route('/upload').post(function (req, res, next) {
 	req.pipe(req.busboy);
 });
 
-var transcode = function (file, sessionVars, engine) {
+var transcode = function (file, sessionVars) {
 	var percent;
 	var timestamp;
 	var command = ffmpeg(file)
@@ -176,22 +176,6 @@ var transcode = function (file, sessionVars, engine) {
 			//console.log('Transcoding progress ' + sessionVars.md5);
 		})
 		.on('end', function () {
-			if (engine) {
-				var found = false;
-				for (var temp in processing) {
-					if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					engine.remove(false, function() {
-						console.log("Removed torrent temp data");
-					});
-				} else {
-					console.log("Another process is using the same torrent data.  Leaving intact.");
-				}
-			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
 				console.log('File has been transcoded successfully: ' + sessionVars.md5);
@@ -233,22 +217,6 @@ var transcode = function (file, sessionVars, engine) {
 		})
 		.on('error', function (err, stdout, stderr) {
 			//console.log("Transcoding issue: " + err + stderr);
-			if (engine) {
-				var found = false;
-				for (var temp in processing) {
-					if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					engine.remove(false, function() {
-						console.log("Removed torrent temp data");
-					});
-				} else {
-					console.log("Another process is using the same torrent data.  Leaving intact.");
-				}
-			}
 			if (processing[sessionVars.md5] && !processing[sessionVars.md5].disconnected) {
 				processing[sessionVars.md5].emit('progress', { md5: sessionVars.md5, percent: 100, type: 'processing' });
 			} else {
@@ -442,7 +410,7 @@ var deleteVideo = function (md5) {
 	});
 };
 
-var doTorrent = function(socket, sessionVars, file) {
+var doTorrent = function(socket, sessionVars, engine, file) {
 	console.log("Torrenting file: " + file.name + ", size: " + file.length);
 
 	var downloaded = 0;
@@ -483,6 +451,22 @@ var doTorrent = function(socket, sessionVars, file) {
 	});
 	fstream.on('close', function () {
 		sessionVars.md5 = hash.digest('hex');
+		
+		var found = false;
+		for (var temp in processing) {
+			if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			engine.remove(false, function() {
+				console.log("Removed torrent temp data");
+			});
+		} else {
+			console.log("Another process is using the same torrent data.  Leaving intact.");
+		}
+		
 		if (!socket.disconnected) {
 			socket.emit('progress', { md5: filename, percent: 100, type: 'procuring', name: sessionVars.name });
 		} else {
@@ -675,7 +659,7 @@ io.on('connection', function (socket) {
 							if (engine.files.length > 0) {
 								for (var i = 0; i < engine.files.length; i++) {
 									if (engine.files[i].length > 1000000) {
-										doTorrent(socket, JSON.parse(JSON.stringify(sessionVars)), engine.files[i]);
+										doTorrent(socket, JSON.parse(JSON.stringify(sessionVars)), engine, engine.files[i]);
 									}
 								}
 							}
