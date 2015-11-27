@@ -27,6 +27,7 @@ app.use(busboy());
 app.use(express.static(path.join(__dirname, 'public')));
 
 var processing = {};
+var torrenting = {};
 var done = [];
 
 var userKeys = {};
@@ -224,6 +225,7 @@ var transcode = function (file, sessionVars) {
 app.get('/download.mp4', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
+	removeFromDone(filename);
 	if (filename) {
 		var file = path.resolve(dir, filename);
 		fs.stat(file, function(err, stats) {
@@ -405,16 +407,13 @@ var getName = function(filename) {
 
 var doTorrent = function(socket, sessionVars, engine, file) {
 	console.log("Torrenting file: " + file.name + ", size: " + file.length);
-
 	var downloaded = 0;
-	var filesize = file.length;
 	var stream = file.createReadStream();
-
-	sessionVars.name = String(file.name);
+	sessionVars.name = file.name;
 	var filename = getName(file.name);
+	var filesize = file.length;
 
 	socket.emit('procuring', { md5: filename, name: sessionVars.name });
-
 	var hash = crypto.createHash('md5');
 	var fstream = fs.createWriteStream(dir + filename);
 	stream.on('data', function (chunk) {
@@ -427,38 +426,50 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 		try {
 			fs.unlinkSync(dir + filename);
 		} catch (e) { }
+		removeFromTorrenting(sessionVars, engine);
 		console.log("Error streaming torrent " + err);
 	});
 	fstream.on('close', function () {
-		sessionVars.md5 = hash.digest('hex');
-		/*
-		var found = false;
-		for (var temp in processing) {
-			if (temp !== sessionVars.md5 && temp.indexOf(sessionVars.md5.substr(0, sessionVars.md5.length - 1)) >= 0) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			engine.remove(false, function() {
-				console.log("Removed torrent temp data");
-			});
-		} else {
-			console.log("Another process is using the same torrent data.  Leaving intact.");
-		}
-		*/
+		removeFromTorrenting(sessionVars, engine);
 		if (!socket.disconnected) {
 			socket.emit('progress', { md5: filename, percent: 100, type: 'procuring', name: sessionVars.name });
 		} else {
 			done.push({ md5: filename, type: 'procuring' });
 		}
 
-		sessionVars.md5 = getName(sessionVars.md5);
+		sessionVars.md5 = getName(hash.digest('hex'));
 		sessionVars.ddate = String(Date.now());
 		socket.emit('processing', {name: sessionVars.name, md5: sessionVars.md5});
 		transcode(dir + filename, sessionVars);
 	});
 	stream.pipe(fstream);
+};
+
+var removeFromDone = function(md5) {
+	for (var i = 0; i < done.length; i++) {
+		if (done[i].md5 == md5) {
+			done.splice(i, 1);
+			return;
+		}
+	}
+};
+
+var removeFromTorrenting = function(sessionVars, engine) {
+	var arr = torrenting[sessionVars.torrentLink];
+	for (var i = 0; i < arr.length; i++) {
+		if (arr[i] == sessionVars.name) {
+			arr.splice(i, 1);
+			break;
+		}
+	}
+	if (arr.length == 0) {
+		delete torrenting[sessionVars.torrentLink];
+		engine.remove(false, function() {
+			console.log("Removed torrent temp data");
+		});
+	} else {
+		console.log("Another process is using the same torrent data.  Leaving intact.");
+	}
 };
 
 io.on('connection', function (socket) {
@@ -481,12 +492,7 @@ io.on('connection', function (socket) {
 		processing[md5] = socket;
 	});
 	socket.on('unsubscribe', function(md5) {
-		for (var i = 0; i < done.length; i++) {
-			if (done[i].md5 == md5) {
-				done.splice(i, 1);
-				return;
-			}
-		}
+		removeFromDone(md5);
 	});
 	socket.on('new', function (newUser) {
 		var userObj = {};
@@ -630,6 +636,10 @@ io.on('connection', function (socket) {
 							if (engine.files.length > 0) {
 								for (var i = 0; i < engine.files.length; i++) {
 									if (engine.files[i].length > 1000000) {
+										if (!torrenting[sessionVars.torrentLink]) {
+											torrenting[sessionVars.torrentLink] = [];
+										}
+										torrenting[sessionVars.torrentLink].push(engine.files[i].name);
 										doTorrent(socket, JSON.parse(JSON.stringify(sessionVars)), engine, engine.files[i]);
 									}
 								}
