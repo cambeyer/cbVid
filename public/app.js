@@ -400,10 +400,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	};
 
-	$rootScope.socket.on('procuring', function(md5) {
+	$rootScope.socket.on('procuring', function(obj) {
 		$scope.$apply(function () {
-			$rootScope.procuring[md5] = {};
-			$rootScope.procuring[md5].percent = 0;
+			$rootScope.procuring[obj.md5] = {};
+			$rootScope.procuring[obj.md5].percent = 0;
+			$rootScope.procuring[obj.md5].name = obj.name;
 			$rootScope.sendSubscriptions();
 		});
 	});
@@ -413,7 +414,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.processing[obj.md5] = {};
 			$rootScope.processing[obj.md5].percent = 0;
 			$rootScope.processing[obj.md5].name = obj.name;
-			$rootScope.processing[obj.md5].timestamp = "Initializing...";
 			$rootScope.sendSubscriptions();
 		});
 	});

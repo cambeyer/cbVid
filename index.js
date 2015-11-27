@@ -100,36 +100,14 @@ app.route('/upload').post(function (req, res, next) {
 	});
 	req.busboy.on('file', function (fieldname, stream, name) {
 		console.log("Uploading file: " + name);
-		filename = dir + path.basename(name);
 		sessionVars.name = name;
-		var num = 0;
-		var exists = true;
-		while (exists) {
-			try {
-				fs.statSync(filename + num);
-				num = num + 1;
-			} catch (e) {
-				filename = filename + num;
-				exists = false;
-			}
-		}
+		filename = dir + getName(path.basename(name));
 		fstream = fs.createWriteStream(filename);
 		stream.on('data', function (chunk) {
 			hash.update(chunk);
 		});
 		fstream.on('close', function () {
-			sessionVars.md5 = hash.digest('hex');
-			var num = 0;
-			var exists = true;
-			while (exists) {
-				try {
-					fs.statSync(dir + sessionVars.md5 + num);
-					num = num + 1;
-				} catch (e) {
-					sessionVars.md5 = sessionVars.md5 + num;
-					exists = false;
-				}
-			}
+			sessionVars.md5 = getName(hash.digest('hex'));
 			res.writeHead(200, { Connection: 'close' });
       		res.end(sessionVars.md5);
 
@@ -410,17 +388,7 @@ var deleteVideo = function (md5) {
 	});
 };
 
-var doTorrent = function(socket, sessionVars, engine, file) {
-	console.log("Torrenting file: " + file.name + ", size: " + file.length);
-
-	var downloaded = 0;
-	var filesize = file.length;
-	var stream = file.createReadStream();
-
-	var filename = file.name;
-	filename = filename ? filename : "torrented";
-	sessionVars.name = String(filename);
-
+var getName = function(filename) {
 	var num = 0;
 	var exists = true;
 	while (exists) {
@@ -432,8 +400,20 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 			exists = false;
 		}
 	}
+	return filename;
+};
 
-	socket.emit('procuring', filename);
+var doTorrent = function(socket, sessionVars, engine, file) {
+	console.log("Torrenting file: " + file.name + ", size: " + file.length);
+
+	var downloaded = 0;
+	var filesize = file.length;
+	var stream = file.createReadStream();
+
+	sessionVars.name = String(file.name);
+	var filename = getName(file.name);
+
+	socket.emit('procuring', { md5: filename, name: sessionVars.name });
 
 	var hash = crypto.createHash('md5');
 	var fstream = fs.createWriteStream(dir + filename);
@@ -472,17 +452,8 @@ var doTorrent = function(socket, sessionVars, engine, file) {
 		} else {
 			done.push({ md5: filename, type: 'procuring' });
 		}
-		var num = 0;
-		var exists = true;
-		while (exists) {
-			try {
-				fs.statSync(dir + sessionVars.md5 + num);
-				num = num + 1;
-			} catch (e) {
-				sessionVars.md5 = sessionVars.md5 + num;
-				exists = false;
-			}
-		}
+
+		sessionVars.md5 = getName(sessionVars.md5);
 		sessionVars.ddate = String(Date.now());
 		socket.emit('processing', {name: sessionVars.name, md5: sessionVars.md5});
 		transcode(dir + filename, sessionVars);
@@ -691,17 +662,7 @@ io.on('connection', function (socket) {
 				filename = filename ? filename : "ingested";
 				sessionVars.name = String(filename);
 
-				var num = 0;
-				var exists = true;
-				while (exists) {
-					try {
-						fs.statSync(dir + filename + num);
-						num = num + 1;
-					} catch (e) {
-						filename = filename + num;
-						exists = false;
-					}
-				}
+				filename = getName(filename);
 
 				var hash = crypto.createHash('md5');
 				var fstream = fs.createWriteStream(dir + filename);
@@ -721,7 +682,7 @@ io.on('connection', function (socket) {
 					console.log("Error streaming ingest " + err);
 				});
 				stream.on('response', function (data) {
-					socket.emit('procuring', filename);
+					socket.emit('procuring', { md5: filename, name: sessionVars.name });
 					filesize = data.headers['content-length'];
 				});
 				fstream.on('close', function () {
@@ -731,17 +692,7 @@ io.on('connection', function (socket) {
 					} else {
 						done.push({ md5: filename, type: 'procuring' });
 					}
-					var num = 0;
-					var exists = true;
-					while (exists) {
-						try {
-							fs.statSync(dir + sessionVars.md5 + num);
-							num = num + 1;
-						} catch (e) {
-							sessionVars.md5 = sessionVars.md5 + num;
-							exists = false;
-						}
-					}
+					sessionVars.md5 = getName(sessionVars.md5);
 					sessionVars.ddate = String(Date.now());
 					socket.emit('processing', {name: sessionVars.name, md5: sessionVars.md5});
 					transcode(dir + filename, sessionVars);
