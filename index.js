@@ -211,10 +211,11 @@ var transcode = function (file, sessionVars) {
 				fs.statSync(dir + sessionVars.md5);
 				fs.unlinkSync(dir + sessionVars.md5);
 			} catch (e) { }
+			clearTimeout(timeout);
 		})
 		.save(dir + sessionVars.md5);
 
-		setTimeout(function() {
+		var timeout = setTimeout(function() {
 			if (!percent && !timestamp) {
 				console.log("No progress has been made; killing the process.");
 				command.kill();
