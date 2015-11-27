@@ -141,6 +141,7 @@ var transcode = function (file, sessionVars) {
 			console.log("Beginning transcode");
 		})
 		.on('progress', function (progress) {
+			clearTimeout(timeout);
 			percent = progress.percent;
 			timestamp = progress.timemark;
 			if (processing[sessionVars.md5]) {
