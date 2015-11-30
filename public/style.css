@@ -98,6 +98,8 @@ input[readonly] {
   background-color: black !important;
   max-width: 720px;
   /*max-height: 500px;*/
+  height: 100%;
+  overflow: hidden;
 }
 
 video.fp-engine {

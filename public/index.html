@@ -25,9 +25,10 @@
 			body { font-family: 'Lato', serif; }
 		</style>
 	</head>
-	<body style="background-color: #F8F8F8">
+	<body style="background-color: #F8F8F8" ng-style="{ 'overflow': embed ? 'hidden' : '' }">
 		<div style="height: 100%">
-			<div ui-view></div>
+			<div ng-if="embed" class="player" style="position: absolute; top: 0px; left: 0px; height: 100%; width: 100%; text-align: center"></div>
+			<div ng-show="!embed" ui-view></div>
 		</div>
 	</body>
 </html>
