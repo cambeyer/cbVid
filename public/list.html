@@ -1,7 +1,7 @@
 <div class="container-fluid" style="height: 100%">
 	<div class="row" ng-show="!(videoList | isEmpty)">
-		<div ui-view class="col-lg-7"></div>
-		<div class="col-lg-5">
+		<div ui-view ng-class="{'col-lg-7': !embed}"></div>
+		<div ng-if="!embed" class="col-lg-5">
 			<ul class="example-animate-container">
 				<li ng-show="search.text"><h3 style="margin-top: 0px">Search: {{search.text}}</h3></li>
 				<li ng-show="((videoList | filter:search.text) | isEmpty) && (torrentList | isEmpty)"><h3>No Results</h3></li>

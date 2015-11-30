@@ -58,6 +58,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.search = {
 		text: ''
 	};
+	
+	$rootScope.embed = false;
 
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
@@ -504,6 +506,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			    }
 			});
 
+			if ($rootScope.embed) {
+				$('#flow').css('max-width', '100%');
+			}
 			$('.fp-engine').attr('preload', 'auto');
 			$('.fp-embed').remove();
 			$('.fp-brand').remove();
