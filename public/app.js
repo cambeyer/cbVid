@@ -8,6 +8,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
             templateUrl: 'auth.html',
             controller: 'authController'
         })
+        
+        .state('embed', {
+        	url: '/embed/:filename',
+        	controller: function($rootScope, $state, $stateParams) {
+        		$rootScope.embed = true;
+        		$state.go('cbvid.home', {filename: $stateParams.filename});
+        	}
+        })
 
         .state('cbvid', {
             templateUrl: 'cbvid.html',
@@ -197,6 +205,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
 		//console.log(fromState.name + " to " + toState.name);
+		if (fromParams.embed) {
+			$rootScope.embed = true;
+		}
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
 				$rootScope.pendingState = String(toState.name);
