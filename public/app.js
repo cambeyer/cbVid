@@ -12,8 +12,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         .state('embed', {
         	url: '/embed/:filename',
         	controller: function($rootScope, $state, $stateParams) {
-        		$rootScope.embed = true;
-        		$state.go('cbvid.home', {filename: $stateParams.filename});
+        		if ($rootScope.canEmbed) {
+	        		$rootScope.embed = true;
+	        		$rootScope.canEmbed = false;
+	        		$state.go('cbvid.list', {filename: $stateParams.filename});
+        		} else {
+        			alert("Broken");
+        		}
         	}
         })
 
@@ -68,6 +73,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.embed = false;
+	$rootScope.canEmbed = true;
 
 	$rootScope.uploading = {};
 	$rootScope.processing = {};
@@ -205,8 +211,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
 		//console.log(fromState.name + " to " + toState.name);
-		if (fromParams.embed) {
-			$rootScope.embed = true;
+		if (toState.name == 'embed' && !$rootScope.canEmbed) {
+			event.preventDefault();
 		}
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
@@ -475,6 +481,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 .controller('playerController', function($scope, $rootScope, $state, $sce, $modal, EncryptService) {
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
+	
+	$rootScope.canEmbed = false;
 
 	$scope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {

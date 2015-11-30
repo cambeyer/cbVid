@@ -1,4 +1,4 @@
-<div class="container-fluid" style="height: 100%">
+<div class="container-fluid" ng-style="{ 'overflow': embed ? 'hidden' : '' }" style="height: 100%">
 	<div class="row" ng-show="!(videoList | isEmpty)">
 		<div ui-view ng-class="{'col-lg-7': !embed}"></div>
 		<div ng-if="!embed" class="col-lg-5">
