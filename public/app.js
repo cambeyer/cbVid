@@ -16,8 +16,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	        		$rootScope.embed = true;
 	        		$rootScope.canEmbed = false;
 	        		$state.go('cbvid.list', {filename: $stateParams.filename});
-        		} else {
-        			alert("Broken");
         		}
         	}
         })
