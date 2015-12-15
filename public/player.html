@@ -10,5 +10,5 @@
 		{{activeVideo.details.original}}
 	</h3>
 	<h5 style="margin-bottom: 20px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h5>
-	<h5 ng-if="activeVideo.details.description" style="margin-bottom: 20px">Description: <span ng-bind="activeVideo.details.description"></span></h5>
+	<h5 ng-if="activeVideo.details.description" style="margin-bottom: 20px" ng-bind="activeVideo.details.description"></h5>
 </div>
