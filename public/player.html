@@ -10,5 +10,7 @@
 		{{activeVideo.details.original}}
 	</h3>
 	<h5 style="margin-bottom: 20px">Uploaded: <span ng-bind="activeVideo.details.date | date:'medium'"></span></h5>
-	<h5 ng-if="activeVideo.details.description" style="margin-bottom: 20px" ng-bind="activeVideo.details.description"></h5>
+	<div style="text-align: left; padding-top: 5px; padding-bottom: 10px">
+		<h5 ng-if="activeVideo.details.description" style="background-color: #DFDFDF; padding-bottom: 20px; padding-top: 10px; padding-left: 20px; padding-right: 20px; white-space: pre-wrap" ng-bind="activeVideo.details.description"></h5>
+	</div>
 </div>
