@@ -68,6 +68,23 @@ var cleanup = function() {
 			checkRemove(files[i].split('/')[files[i].split('/').length - 1]);
 		}
 	}
+	db.videos.find({ }, function(err, videos) {
+		if (!err) {
+			for (var i = 0; i < videos.length; i++) {
+				if (videos[i].filename) {
+					try {
+						fs.statSync(dir + videos[i].filename);
+					} catch (e) {
+						db.videos.remove({ filename: videos[i].filename }, {}, function(err, numRemoved) {
+							if (!err) {
+								console.log("Removed " + numRemoved + " abandoned records.");
+							}
+						});
+					}
+				}
+			}
+		}
+	});
 };
 
 var checkRemove = function(name) {
@@ -77,6 +94,20 @@ var checkRemove = function(name) {
 				console.log("Removing " + dir + name);
 				fs.unlinkSync(dir + name);
 			} catch (e) { }
+		} else if (videos.length == 1) {
+			var permissions = videos[0].permissions;
+			for (var i = 0; i < permissions.length; i++) {
+				if (permissions[i].isowner == "true") {
+					db.users.find({ username: permissions[i].username }, function(err, users) {
+						if (!err && users.length == 0) {
+							try {
+								console.log("Removing " + dir + name);
+								fs.unlinkSync(dir + name);
+							} catch (e) { }
+						}
+					});
+				}
+			}
 		}
 	});
 };
