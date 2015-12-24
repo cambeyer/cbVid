@@ -595,7 +595,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.type = "file";
 	$scope.custom = {
 		magnet: "",
-		ingest: ""
+		ingest: "",
+		keep: false
 	};
 
 	$scope.ok = function () {
@@ -618,9 +619,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.sendTorrent = function() {
 		if ($scope.custom.magnet) {
-			$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt($scope.custom.magnet), viewers: angular.toJson($rootScope.viewers) }));
+			$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt($scope.custom.magnet), viewers: angular.toJson($rootScope.viewers), keep: $scope.custom.keep }));
 			$rootScope.viewers = [];
 			$scope.custom.magnet = "";
+			$scope.custom.keep = "";
 			$modalInstance.close(true);
 		}
 	};

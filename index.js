@@ -214,7 +214,11 @@ var transcode = function (file, sessionVars) {
 				db.videos.insert(vidDetails, function (err) {
 					if (!err) {
 						try {
-							fs.unlinkSync(file); //remove the initially uploaded file... could retain this for auditing purposes
+							if (!sessionVars.keep) {
+								fs.unlinkSync(file); //remove the initially uploaded file... could retain this for auditing purposes
+							} else {
+								console.log("Retaining file");
+							}
 						} catch (e) { }
 						for (var i = 0; i < vidDetails.permissions.length; i++) {
 							console.log("Sending video list");

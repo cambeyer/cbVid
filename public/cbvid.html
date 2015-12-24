@@ -23,7 +23,12 @@
 				<td align="right" style="padding-right: 0px"><button class="btn btn-default" id="upload" ng-click="upload()">Upload</button></td>
 			</tr>
 			<tr ng-show="type == 'torrent'">
-				<td width="100%"><input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link"></td>
+				<td width="100%">
+					<input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link">
+					<div style="padding-left: 3px" class="checkbox">
+						<label><input type="checkbox" ng-model="custom.keep">Keep Original</label>
+					</div>
+				</td>
 				<td align="right" style="padding-right: 0px"><button class="btn btn-default" id="torrent" ng-click="sendTorrent()">Torrent</button></td>
 			</tr>
 			<tr ng-show="type == 'ingest'">
