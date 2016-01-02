@@ -20,6 +20,12 @@ var atob = require('atob');
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
+//ensure the directory exists
+fs.mkdir(dir, function(err) {
+    if (err && err.code !== 'EEXIST') {
+    	console.log("Error creating folder");
+    }
+});
 
 app.use(busboy());
 
