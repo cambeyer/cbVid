@@ -328,6 +328,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$scope.confirmPassword = false;
 		$rootScope.credentials.passwordConfirm = "";
 		$rootScope.$storage.username = $rootScope.$storage.username.replace(/[^\w\.@-]/g, '');
+		$rootScope.$storage.username = $rootScope.$storage.username.toLowerCase();
 	};
 })
 
