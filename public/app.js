@@ -260,6 +260,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.login = function () {
 		if ($rootScope.$storage.username && $rootScope.credentials.password) {
+			if ($rootScope.$storage.username.indexOf('@') < 1) {
+				alert("Please use a valid e-mail address.");
+				return;
+			}
 			$rootScope.$storage.authed = false;
 			$scope.loading = true;
 			delete $rootScope.$storage.sessionNumber;
@@ -323,7 +327,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.resetControls = function () {
 		$scope.confirmPassword = false;
 		$rootScope.credentials.passwordConfirm = "";
-		$rootScope.$storage.username = $rootScope.$storage.username.replace(/\W/g, '');
+		$rootScope.$storage.username = $rootScope.$storage.username.replace(/[^\w\.@-]/g, '');
 	};
 })
 

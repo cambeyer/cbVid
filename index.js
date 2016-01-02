@@ -17,6 +17,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
+var nodemailer = require("nodemailer");
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
@@ -31,6 +32,12 @@ app.use(busboy());
 
 //files in the public directory can be directly queried for via HTTP
 app.use(express.static(path.join(__dirname, 'public')));
+
+//set up smtp service for sending email
+var transport = nodemailer.createTransport("direct", {debug: false});
+
+var EMAIL_FROM_NAME = "cbVid";
+var EMAIL_FROM_ADDRESS = "no-reply@cbvid.com";
 
 var processing = {};
 var torrenting = {};
@@ -115,6 +122,19 @@ var checkRemove = function(name) {
 				}
 			}
 		}
+	});
+};
+
+var sendMail = function(recipient, subject, text) {
+	transport.sendMail({
+	    from: EMAIL_FROM_NAME + " <" + EMAIL_FROM_ADDRESS + ">",
+	    to: recipient,
+	    subject: subject,
+	    text: text
+	}, function(error, info){
+	    if (error) {
+	        console.log(error);
+	    }
 	});
 };
 
@@ -759,4 +779,5 @@ io.on('connection', function (socket) {
 http.listen(80, "0.0.0.0", function (){
 	console.log('listening on *:80');
 	cleanup();
+	//sendMail("cam.beyer@gmail.com", "Email test", "This is a test");
 });

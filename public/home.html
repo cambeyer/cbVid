@@ -1,7 +1,22 @@
 <div class="container-fluid" style="height: 100%">
-	<div class="row" ng-show="(videoList | isEmpty)">
+	<div class="row" ng-show="(videoList | isEmpty) && !search.text">
 		<div class="col-lg-12">
 			<div style="text-align: center"><h2>It looks like you have not uploaded any videos!  Choose Upload to get started.</h2></div>
+		</div>
+	</div>
+	<div class="row" ng-show="search.text">
+		<div class="col-lg-1"></div>
+		<div class="col-lg-11">
+			<ul class="example-animate-container">
+				<li ng-show="search.text"><h3 style="margin-top: 0px">Search: {{search.text}}</h3></li>
+				<li ng-show="(torrentList | isEmpty)"><h3>No Results</h3></li>
+				<li ng-if="search.text" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
+					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="sendTorrent(torrent.download)">
+						<span class="glyphicon glyphicon-cloud-download"></span>
+					</button>
+					<span ng-bind="torrent.title"></span>
+				</li>
+			</ul>
 		</div>
 	</div>
 </div>
