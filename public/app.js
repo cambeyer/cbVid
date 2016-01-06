@@ -260,10 +260,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.login = function () {
 		if ($rootScope.$storage.username && $rootScope.credentials.password) {
-			if ($rootScope.$storage.username.indexOf('@') < 1) {
-				alert("Please use a valid e-mail address.");
-				return;
-			}
 			$rootScope.$storage.authed = false;
 			$scope.loading = true;
 			delete $rootScope.$storage.sessionNumber;
@@ -278,15 +274,20 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				});
 			} else {
 				if ($rootScope.credentials.passwordConfirm == $rootScope.credentials.password) {
-					$rootScope.srpClient.createVerifier(function (err, result) {
-						if (!err) {
-							$scope.srpObj.salt = result.salt;
-							$scope.srpObj.verifier = result.verifier;
-							$rootScope.socket.emit('new', $scope.srpObj);
-						} else {
-							console.log("Error creating verifier.");
-						}
-				    });
+					if ($rootScope.$storage.username.indexOf('@') < 1) {
+						alert("Please use a valid e-mail address.");
+						$scope.loading = false;
+					} else {
+						$rootScope.srpClient.createVerifier(function (err, result) {
+							if (!err) {
+								$scope.srpObj.salt = result.salt;
+								$scope.srpObj.verifier = result.verifier;
+								$rootScope.socket.emit('new', $scope.srpObj);
+							} else {
+								console.log("Error creating verifier.");
+							}
+					    });
+					}
 				} else {
 					alert("Your passwords do not match.  Please try again.");
 					$rootScope.credentials.passwordConfirm = "";
@@ -668,9 +669,21 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$modalInstance.close();
 	};
 	$scope.ok = function () {
-		$rootScope.setTitle($scope.updateVideo.details.original);
-		$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
-		$modalInstance.close();
+		var viewersOK = true;
+		for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
+			if ($scope.updateVideo.permissions[i].username.indexOf('@') < 1) {
+				viewersOK = false;
+				break;
+			}
+		}
+		if (!viewersOK) {
+			alert("Please use valid e-mail addresses for viewers.");
+			$scope.loading = false;
+		} else {
+			$rootScope.setTitle($scope.updateVideo.details.original);
+			$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
+			$modalInstance.close();
+		}
 	};
 })
 
@@ -704,7 +717,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		controller: function($scope) {
 			$scope.checkViewers = function () {
 				for (var i = 0; i < $scope.list.length; i++) {
-					$scope.list[i].username = $scope.list[i].username.replace(/\W/g, '');
+					$scope.list[i].username = $scope.list[i].username.replace(/[^\w\.@-]/g, '');
 				}
 			};
 		}
