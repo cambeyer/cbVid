@@ -30,6 +30,14 @@ fs.mkdir(dir, function(err) {
 
 app.use(busboy());
 
+app.use(function (req, res, next) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
+    next();
+});
+
 //files in the public directory can be directly queried for via HTTP
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -305,7 +313,6 @@ app.get('/download.mp4', function (req, res){
 				})
 				.on('headers', function(res, path, stat) {
 					res.setHeader('Content-Type', 'video/mp4');
-					res.setHeader('Access-Control-Allow-Origin', '*');
 				})
 				.pipe(res);
 		});
