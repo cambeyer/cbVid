@@ -703,7 +703,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					'</tr>' +
 					'<tr ng-repeat="user in list">' +
 						'<td>' +
-							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" maxlength="20" class="form-control" type="text" placeholder="Username">' +
+							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" class="form-control" type="text" placeholder="Username">' +
 						'</td>' +
 						'<td align="right" style="padding-right: 0px">' +
 							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' +
