@@ -305,6 +305,7 @@ app.get('/download.mp4', function (req, res){
 				})
 				.on('headers', function(res, path, stat) {
 					res.setHeader('Content-Type', 'video/mp4');
+					res.setHeader('Access-Control-Allow-Origin', '*');
 				})
 				.pipe(res);
 		});
