@@ -491,9 +491,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	/*global Downloader*/
 	$scope.downloader = new Downloader();
-	$scope.downloader.setDownloadTimeoutCallback = function (value) {
-		$scope.downloader.setInterval(value);
-	};
 	
 	$scope.video;
 	
@@ -542,6 +539,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			});
 			
 			$scope.video = $('.fp-engine')[0];
+			$scope.downloader.reset();
 			
 			$scope.video.addEventListener("seeking", function(e) {
 				var i, start, end;
@@ -566,7 +564,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		    	$scope.video.playing = true;
 		    });
 			
-			$scope.downloader.reset();
 			$scope.resetMediaSource();
 		
 			if ($rootScope.embed) {
