@@ -966,7 +966,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	this.isActive = false;
 	this.chunkStart = 0;
-	this.chunkSize = 500000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
+	this.chunkSize = 300000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
 	this.totalLength = 0;
 	this.chunkTimeout = 100; //adjustible; default 500
 	this.url = null;
