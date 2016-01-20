@@ -488,8 +488,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	/*global MP4Box*/
 	$scope.mp4box = new MP4Box();
-	$scope.movieInfo;
-	
+
 	/*global Downloader*/
 	$scope.downloader = new Downloader();
 	$scope.downloader.setDownloadTimeoutCallback = function (value) {
@@ -588,26 +587,54 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		mediaSource.video = $scope.video;
 		$scope.video.ms = mediaSource;
 		mediaSource.addEventListener("sourceopen", function(e) {
-			var ms = $scope.video.ms;
-			if (ms.readyState !== "open") {
+			if ($scope.video.ms.readyState !== "open") {
 				return;
 			}
 			
 			$scope.mp4box.onReady = function (info) {
-				$scope.movieInfo = info;
-				ms.duration = info.duration/info.timescale;
+				$scope.video.ms.duration = info.duration/info.timescale;
 				if (!$scope.downloader.isStopped()) {
 					$scope.downloader.stop();
 				}
-				$scope.initializeAllSourceBuffers();
+				for (var i = 0; i < info.tracks.length; i++) {
+					var track = info.tracks[i];
+					var ms = $scope.video.ms;
+					var track_id = track.id;
+					var codec = track.codec;
+					var mime = 'video/mp4; codecs=\"'+codec+'\"';
+					if (MediaSource.isTypeSupported(mime)) {
+						try {
+							var sourceBuffer = ms.addSourceBuffer(mime);
+							sourceBuffer.ms = ms;
+							sourceBuffer.id = track_id;
+							$scope.mp4box.setSegmentOptions(track_id, sourceBuffer, { nbSamples: 1000 } );
+							sourceBuffer.pendingAppends = [];
+						} catch (e) { }
+					}
+				}
+				var initSegs = $scope.mp4box.initializeSegmentation();
+				for (var i = 0; i < initSegs.length; i++) {
+					var sb = initSegs[i].user;
+					if (i === 0) {
+						sb.ms.pendingInits = 0;
+					}
+					sb.addEventListener("updateend", $scope.onInitAppended);
+					sb.appendBuffer(initSegs[i].buffer);
+					sb.segmentIndex = 0;
+					sb.ms.pendingInits++;
+				}
 			};
+			
 			$scope.mp4box.onSegment = function (id, user, buffer, sampleNum) {	
 				var sb = user;
 				sb.segmentIndex++;
 				sb.pendingAppends.push({ id: id, buffer: buffer, sampleNum: sampleNum });
 				$scope.onUpdateEnd.call(sb, true, false);
 			};
-		
+			
+			$scope.downloader.setInterval(500);
+			$scope.downloader.setChunkSize(1000000);
+			$scope.downloader.setUrl($scope.videoString($rootScope.activeVideo.filename));
 			$scope.downloader.setCallback(
 				function (response, end, error) { 
 					var nextStart = 0;
@@ -621,47 +648,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					}
 				}
 			);
-			
-			$scope.downloader.setInterval(500);
-			$scope.downloader.setChunkSize(1000000);
-			$scope.downloader.setUrl($scope.videoString($rootScope.activeVideo.filename));
 			$scope.downloader.start();
 		});
 		
 		$scope.video.src = window.URL.createObjectURL(mediaSource);
-	};
-	
-	$scope.initializeAllSourceBuffers = function() {
-		if ($scope.movieInfo) {
-			var info = $scope.movieInfo;
-			for (var i = 0; i < info.tracks.length; i++) {
-				var track = info.tracks[i];
-				var ms = $scope.video.ms;
-				var track_id = track.id;
-				var codec = track.codec;
-				var mime = 'video/mp4; codecs=\"'+codec+'\"';
-				if (MediaSource.isTypeSupported(mime)) {
-					try {
-						var sourceBuffer = ms.addSourceBuffer(mime);
-						sourceBuffer.ms = ms;
-						sourceBuffer.id = track_id;
-						$scope.mp4box.setSegmentOptions(track_id, sourceBuffer, { nbSamples: 1000 } );
-						sourceBuffer.pendingAppends = [];
-					} catch (e) { }
-				}
-			}
-			var initSegs = $scope.mp4box.initializeSegmentation();
-			for (var i = 0; i < initSegs.length; i++) {
-				var sb = initSegs[i].user;
-				if (i === 0) {
-					sb.ms.pendingInits = 0;
-				}
-				sb.addEventListener("updateend", $scope.onInitAppended);
-				sb.appendBuffer(initSegs[i].buffer);
-				sb.segmentIndex = 0;
-				sb.ms.pendingInits++;
-			}
-		}
 	};
 	
 	$scope.onInitAppended = function(e) {
