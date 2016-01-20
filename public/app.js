@@ -486,6 +486,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
 	$scope.videoFile;
 	
+	/*global MP4Box*/
+	$scope.mp4box = new MP4Box();
+	$scope.movieInfo;
+	
+	/*global Downloader*/
+	$scope.downloader = new Downloader();
+	$scope.downloader.setDownloadTimeoutCallback = function (value) {
+		$scope.downloader.setInterval(value);
+	};
+	
+	$scope.video;
+	
 	$rootScope.canEmbed = false;
 
 	$scope.videoString = function (videoFile) {
@@ -515,6 +527,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.filename) {
 			delete $rootScope.params.filename;
+			
 			$('<div/>', { id: 'flow' }).appendTo('.player');
 			$("#flow").flowplayer({
 				fullscreen: true,
@@ -528,7 +541,35 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			        ]
 			    }
 			});
-
+			
+			$scope.video = $('.fp-engine')[0];
+			
+			$scope.video.addEventListener("seeking", function(e) {
+				var i, start, end;
+				var seek_info;
+				if ($scope.video.lastSeekTime !== $scope.video.currentTime) {
+					for (i = 0; i < $scope.video.buffered.length; i++) {
+						start = $scope.video.buffered.start(i);
+						end = $scope.video.buffered.end(i);
+						if ($scope.video.currentTime >= start && $scope.video.currentTime <= end) {
+							return;
+						}
+					}
+					$scope.downloader.stop();
+					seek_info = $scope.mp4box.seek($scope.video.currentTime, true);
+					$scope.downloader.setChunkStart(seek_info.offset);
+					$scope.downloader.resume();
+					$scope.video.lastSeekTime = $scope.video.currentTime;
+				}
+			});
+		    $scope.video.playing = false;
+		    $scope.video.addEventListener("playing", function(e) { 
+		    	$scope.video.playing = true;
+		    });
+			
+			$scope.downloader.reset();
+			$scope.resetMediaSource();
+		
 			if ($rootScope.embed) {
 				$('#flow').css('max-width', '100%');
 			}
@@ -538,6 +579,118 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('a[href*="flowplayer"]').remove();
 			$('.fp-context-menu').addClass('hidden');
 			$('.fp-volume').css('right', '40px');
+		}
+	};
+	
+	$scope.resetMediaSource = function() {
+		/*global MediaSource*/
+		var mediaSource = new MediaSource();
+		mediaSource.video = $scope.video;
+		$scope.video.ms = mediaSource;
+		mediaSource.addEventListener("sourceopen", function(e) {
+			var ms = $scope.video.ms;
+			if (ms.readyState !== "open") {
+				return;
+			}
+			
+			$scope.mp4box.onReady = function (info) {
+				$scope.movieInfo = info;
+				ms.duration = info.duration/info.timescale;
+				if (!$scope.downloader.isStopped()) {
+					$scope.downloader.stop();
+				}
+				$scope.initializeAllSourceBuffers();
+			};
+			$scope.mp4box.onSegment = function (id, user, buffer, sampleNum) {	
+				var sb = user;
+				sb.segmentIndex++;
+				sb.pendingAppends.push({ id: id, buffer: buffer, sampleNum: sampleNum });
+				$scope.onUpdateEnd.call(sb, true, false);
+			};
+		
+			$scope.downloader.setCallback(
+				function (response, end, error) { 
+					var nextStart = 0;
+					if (response) {
+						nextStart = $scope.mp4box.appendBuffer(response);
+					}
+					if (end) {
+						$scope.mp4box.flush();
+					} else {
+						$scope.downloader.setChunkStart(nextStart); 			
+					}
+				}
+			);
+			
+			$scope.downloader.setInterval(500);
+			$scope.downloader.setChunkSize(1000000);
+			$scope.downloader.setUrl($scope.videoString($rootScope.activeVideo.filename));
+			$scope.downloader.start();
+		});
+		
+		$scope.video.src = window.URL.createObjectURL(mediaSource);
+	};
+	
+	$scope.initializeAllSourceBuffers = function() {
+		if ($scope.movieInfo) {
+			var info = $scope.movieInfo;
+			for (var i = 0; i < info.tracks.length; i++) {
+				var track = info.tracks[i];
+				var ms = $scope.video.ms;
+				var track_id = track.id;
+				var codec = track.codec;
+				var mime = 'video/mp4; codecs=\"'+codec+'\"';
+				if (MediaSource.isTypeSupported(mime)) {
+					try {
+						var sourceBuffer = ms.addSourceBuffer(mime);
+						sourceBuffer.ms = ms;
+						sourceBuffer.id = track_id;
+						$scope.mp4box.setSegmentOptions(track_id, sourceBuffer, { nbSamples: 1000 } );
+						sourceBuffer.pendingAppends = [];
+					} catch (e) { }
+				}
+			}
+			var initSegs = $scope.mp4box.initializeSegmentation();
+			for (var i = 0; i < initSegs.length; i++) {
+				var sb = initSegs[i].user;
+				if (i === 0) {
+					sb.ms.pendingInits = 0;
+				}
+				sb.addEventListener("updateend", $scope.onInitAppended);
+				sb.appendBuffer(initSegs[i].buffer);
+				sb.segmentIndex = 0;
+				sb.ms.pendingInits++;
+			}
+		}
+	};
+	
+	$scope.onInitAppended = function(e) {
+		var sb = e.target;
+		if (sb.ms.readyState === "open") {
+			sb.sampleNum = 0;
+			sb.removeEventListener('updateend', $scope.onInitAppended);
+			sb.addEventListener('updateend', $scope.onUpdateEnd.bind(sb, true, true));
+			$scope.onUpdateEnd.call(sb, false, true);
+			sb.ms.pendingInits--;
+			if (sb.ms.pendingInits === 0) {
+				$scope.downloader.setChunkStart($scope.mp4box.seek(0, true).offset);
+				$scope.mp4box.start();
+				$scope.downloader.resume();
+			}
+		}
+	};
+
+	$scope.onUpdateEnd = function(isNotInit, isEndOfAppend) {
+		if (isEndOfAppend === true) {
+			if (this.sampleNum) {
+				$scope.mp4box.releaseUsedSamples(this.id, this.sampleNum);
+				delete this.sampleNum;
+			}
+		}
+		if (this.ms.readyState === "open" && this.updating === false && this.pendingAppends.length > 0) {
+			var obj = this.pendingAppends.shift();
+			this.sampleNum = obj.sampleNum;
+			this.appendBuffer(obj.buffer);
 		}
 	};
 
