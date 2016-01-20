@@ -17,7 +17,6 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-var btoa = require('btoa');
 var nodemailer = require("nodemailer");
 
 //set the directory where files are served from and uploaded to
@@ -294,6 +293,34 @@ var transcode = function (file, sessionVars) {
 		}, 60000);
 };
 
+app.get('/download.mp4', function (req, res){
+	var encryptedName = atob(req.query.file);
+	var filename = decrypt(req.query.username, req.query.session, encryptedName);
+	removeFromDone(filename);
+	if (filename) {
+		var file = path.resolve(dir, filename);
+		fs.stat(file, function(err, stats) {
+			if (err) {
+				deleteVideo(filename);
+				res.writeHead(404, {"Content-Type":"text/plain"});
+				res.end("Could not read file");
+				return;
+			}
+
+			send(req, file, {maxAge: '10h'})
+				.on('error', function(err) {
+					console.log(err);
+				})
+				.on('headers', function(res, path, stat) {
+					res.setHeader('Content-Type', 'video/mp4');
+				})
+				.pipe(res);
+		});
+	} else {
+		res.sendStatus(401);
+	}
+});
+
 var createSRPResponse = function (socket, user) {
 	var srpServer = new jsrp.server();
 	srpServer.init({ salt: user.salt, verifier: user.verifier }, function () {
@@ -566,41 +593,6 @@ io.on('connection', function (socket) {
 				console.log("DB lookup error");
 			}
 		});
-	});
-	socket.on('download', function(dwnReq) {
-		var filename = decrypt(dwnReq.username, dwnReq.session, atob(dwnReq.file));
-		removeFromDone(filename);
-		if (filename) {
-			var file = path.resolve(dir, filename);
-			fs.stat(file, function(err, stats) {
-				if (err) {
-					deleteVideo(filename);
-					return;
-				}
-				
-				var length = dwnReq.range.end - dwnReq.range.start + 1;
-				length = dwnReq.range.end >= stats.size ? stats.size - dwnReq.range.start : length;
-				dwnReq.range.end = dwnReq.range.start + length - 1;
-				
-				var res = { file: dwnReq.file, range: dwnReq.range, size: stats.size };
-				fs.open(file, 'r', function(status, fd) {
-					if (status) {
-						console.log(status.message);
-						return;
-					}
-					var buffer = new Buffer(length);
-					fs.read(fd, buffer, 0, length, dwnReq.range.start, function(err, num) {
-						if (!err) {
-							var key = getKey(dwnReq.username, dwnReq.session);
-							if (key && key.verified) {
-								res.data = CryptoJS.AES.encrypt(btoa([].reduce.call(new Uint8Array(buffer),function(p,c){return p+String.fromCharCode(c)},'')), key.content).toString();
-								socket.emit('download', res);
-							}
-						}
-					});
-				});
-			});
-		}
 	});
 	socket.on('update', function(updReq) {
 		var updateVideo = decrypt(updReq.username, updReq.session, updReq.updateVideo);

@@ -58,7 +58,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
     $urlRouterProvider.otherwise('/auth');
 })
 
-.run(function($rootScope, $localStorage, $state, EncryptService, UserObj, VideoList, DownloadService) {
+.run(function($rootScope, $localStorage, $state, EncryptService, UserObj, VideoList) {
 	$rootScope.$storage = $localStorage;
 	$rootScope.$storage.authed;
 	$rootScope.title;
@@ -229,10 +229,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$state.go(newDest, newParams);
 			}
 		}
-	});
-	
-	$rootScope.socket.on('download', function(msg) {
-		DownloadService.receive(msg);
 	});
 })
 
@@ -486,19 +482,17 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.checkTransition();
 })
 
-.controller('playerController', function($scope, $rootScope, $state, $sce, $modal, UserObj, EncryptService, DownloadService) {
+.controller('playerController', function($scope, $rootScope, $state, $sce, $modal, EncryptService) {
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
-
-	/*global MP4Box*/
-	$scope.mp4box = new MP4Box();
-	$scope.video;
+	$scope.videoFile;
 	
 	$rootScope.canEmbed = false;
 
 	$scope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
+			$scope.videoFile = videoFile;
 			/*global btoa*/
-			return btoa(EncryptService.encrypt(videoFile));
+			return $sce.trustAsResourceUrl("./download.mp4?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
 		}
 	};
 
@@ -521,7 +515,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.filename) {
 			delete $rootScope.params.filename;
-			
 			$('<div/>', { id: 'flow' }).appendTo('.player');
 			$("#flow").flowplayer({
 				fullscreen: true,
@@ -535,35 +528,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			        ]
 			    }
 			});
-			
-			$scope.video = $('.fp-engine')[0];
-			DownloadService.reset();
-			
-			$scope.video.addEventListener("seeking", function(e) {
-				var i, start, end;
-				var seek_info;
-				if ($scope.video.lastSeekTime !== $scope.video.currentTime) {
-					for (i = 0; i < $scope.video.buffered.length; i++) {
-						start = $scope.video.buffered.start(i);
-						end = $scope.video.buffered.end(i);
-						if ($scope.video.currentTime >= start && $scope.video.currentTime <= end) {
-							return;
-						}
-					}
-					DownloadService.stop();
-					seek_info = $scope.mp4box.seek($scope.video.currentTime, true);
-					DownloadService.setChunkStart(seek_info.offset);
-					DownloadService.resume();
-					$scope.video.lastSeekTime = $scope.video.currentTime;
-				}
-			});
-		    $scope.video.playing = false;
-		    $scope.video.addEventListener("playing", function(e) { 
-		    	$scope.video.playing = true;
-		    });
-			
-			$scope.resetMediaSource();
-		
+
 			if ($rootScope.embed) {
 				$('#flow').css('max-width', '100%');
 			}
@@ -575,119 +540,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('.fp-volume').css('right', '40px');
 		}
 	};
-	
-	$scope.resetMediaSource = function() {
-		/*global MediaSource*/
-		var mediaSource = new MediaSource();
-		mediaSource.video = $scope.video;
-		$scope.video.ms = mediaSource;
-		mediaSource.addEventListener("sourceopen", function(e) {
-			if ($scope.video.ms.readyState !== "open") {
-				return;
-			}
-			
-			$scope.mp4box.onReady = function (info) {
-				$scope.video.ms.duration = info.duration/info.timescale;
-				DownloadService.stop();
-				for (var i = 0; i < info.tracks.length; i++) {
-					var track = info.tracks[i];
-					var ms = $scope.video.ms;
-					var track_id = track.id;
-					var codec = track.codec;
-					var mime = 'video/mp4; codecs=\"'+codec+'\"';
-					if (MediaSource.isTypeSupported(mime)) {
-						try {
-							var sourceBuffer = ms.addSourceBuffer(mime);
-							sourceBuffer.ms = ms;
-							sourceBuffer.id = track_id;
-							$scope.mp4box.setSegmentOptions(track_id, sourceBuffer, { nbSamples: 1000 } );
-							sourceBuffer.pendingAppends = [];
-						} catch (e) { }
-					}
-				}
-				var initSegs = $scope.mp4box.initializeSegmentation();
-				for (var i = 0; i < initSegs.length; i++) {
-					var sb = initSegs[i].user;
-					if (i === 0) {
-						sb.ms.pendingInits = 0;
-					}
-					sb.addEventListener("updateend", $scope.onInitAppended);
-					sb.appendBuffer(initSegs[i].buffer);
-					sb.segmentIndex = 0;
-					sb.ms.pendingInits++;
-				}
-			};
-			
-			$scope.mp4box.onSegment = function (id, user, buffer, sampleNum) {	
-				var sb = user;
-				sb.segmentIndex++;
-				sb.pendingAppends.push({ id: id, buffer: buffer, sampleNum: sampleNum });
-				$scope.onUpdateEnd.call(sb, true, false);
-			};
 
-			DownloadService.setUrl($scope.videoString($rootScope.activeVideo.filename));
-			DownloadService.setCallback(function (response, end, error) { 
-				var nextStart = 0;
-				if (response && response.file == $scope.videoString($rootScope.activeVideo.filename)) {
-					try {
-						response.data = $scope.base64ToArrayBuffer(CryptoJS.AES.decrypt(response.data, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8));
-						response.data.fileStart = response.range.start;
-						nextStart = $scope.mp4box.appendBuffer(response.data);
-						// console.log(nextStart);
-					} catch (e) { }
-					if (end) {
-						$scope.mp4box.flush();
-					} else {
-						DownloadService.setChunkStart(nextStart); 
-					}
-				}
-			});
-			DownloadService.start();
-		});
-		
-		$scope.video.src = window.URL.createObjectURL(mediaSource);
-	};
-	
-	$scope.base64ToArrayBuffer = function(base64) {
-	    var binary_string =  window.atob(base64);
-	    var len = binary_string.length;
-	    var bytes = new Uint8Array(len);
-	    for (var i = 0; i < len; i++)        {
-	        bytes[i] = binary_string.charCodeAt(i);
-	    }
-	    return bytes.buffer;
-	};
-	
-	$scope.onInitAppended = function(e) {
-		var sb = e.target;
-		if (sb.ms.readyState === "open") {
-			sb.sampleNum = 0;
-			sb.removeEventListener('updateend', $scope.onInitAppended);
-			sb.addEventListener('updateend', $scope.onUpdateEnd.bind(sb, true, true));
-			$scope.onUpdateEnd.call(sb, false, true);
-			sb.ms.pendingInits--;
-			if (sb.ms.pendingInits === 0) {
-				DownloadService.setChunkStart($scope.mp4box.seek(0, true).offset);
-				$scope.mp4box.start();
-				DownloadService.resume();
-			}
-		}
-	};
-
-	$scope.onUpdateEnd = function(isNotInit, isEndOfAppend) {
-		if (isEndOfAppend === true) {
-			if (this.sampleNum) {
-				$scope.mp4box.releaseUsedSamples(this.id, this.sampleNum);
-				delete this.sampleNum;
-			}
-		}
-		if (this.ms.readyState === "open" && this.updating === false && this.pendingAppends.length > 0) {
-			var obj = this.pendingAppends.shift();
-			this.sampleNum = obj.sampleNum;
-			this.appendBuffer(obj.buffer);
-		}
-	};
-	
 	$scope.setVideo();
 })
 
@@ -961,93 +814,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			this.encryptedPhrases[text] = CryptoJS.AES.encrypt(text, $rootScope.$storage.secret).toString();
 		}
 		return this.encryptedPhrases[text];
-	};
-})
-
-.service('DownloadService', function ($rootScope, UserObj) {
-
-	this.isActive = false;
-	this.chunkStart = 0;
-	this.chunkSize = 400000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
-	this.totalLength = 0;
-	this.chunkTimeout = 100; //adjustible; default 500
-	this.url = null;
-	this.callback = null;
-	this.eof = false;
-	
-	this.receive = function(msg) {
-		var dl = this;
-		if (!dl.totalLength) {
-			dl.totalLength = msg.size;
-		}
-		var byteLength = msg.range.end - msg.range.start + 1;
-		dl.eof = (byteLength !== dl.chunkSize) || (byteLength === dl.totalLength);
-		dl.callback(msg, dl.eof); 
-		if (dl.isActive === true && dl.eof === false) {
-			dl.timeoutID = window.setTimeout(dl.getFile.bind(dl), dl.chunkTimeout);
-		} else {
-			dl.isActive = false;
-		}
-	};
-
-	this.reset = function() {
-		this.chunkStart = 0;
-		this.totalLength = 0;
-		this.eof = false;
-	};
-	
-	this.setChunkStart = function(_start) {
-		this.chunkStart = _start;
-		this.eof = false;
-	};
-
-	this.setUrl = function(_url) {
-		this.url = _url;
-	};
-	
-	this.setCallback = function(_callback) {
-		this.callback = _callback;
-	};
-
-	this.getFile = function() {
-		var dl = this;
-		if (dl.totalLength && this.chunkStart >= dl.totalLength) {
-			dl.eof = true;
-		}
-		if (dl.eof === true) {
-			this.callback(null, true);
-			return;
-		}
-		
-		if (dl.isActive) {
-			var req = { file: this.url };
-			req.range = {};
-			req.range.start = this.chunkStart;
-			req.range.end = this.chunkStart + this.chunkSize - 1;
-			$rootScope.socket.emit('download', UserObj.getUser(req));
-		}
-	};
-	
-	this.start = function() {
-		this.chunkStart = 0;
-		this.resume();
-	};
-	
-	this.resume = function() {
-		if (!this.isActive) {
-			this.isActive = true;
-			this.getFile();
-		}
-	};
-	
-	this.stop = function() {
-		if (this.isActive) {
-			this.isActive = false;
-			if (this.timeoutID) {
-				window.clearTimeout(this.timeoutID);
-				delete this.timeoutID;
-			}
-		}
 	};
 })
 
