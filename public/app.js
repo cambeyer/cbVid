@@ -629,6 +629,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			DownloadService.setCallback(function (response, end, error) { 
 				var nextStart = 0;
 				if (response && response.file == $scope.videoString($rootScope.activeVideo.filename)) {
+					response.data = $scope.base64ToArrayBuffer(CryptoJS.AES.decrypt(response.data, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8));
 					response.data.fileStart = response.range.start;
 					nextStart = $scope.mp4box.appendBuffer(response.data);
 					// console.log(nextStart);
@@ -643,6 +644,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 		
 		$scope.video.src = window.URL.createObjectURL(mediaSource);
+	};
+	
+	$scope.base64ToArrayBuffer = function(base64) {
+	    var binary_string =  window.atob(base64);
+	    var len = binary_string.length;
+	    var bytes = new Uint8Array(len);
+	    for (var i = 0; i < len; i++)        {
+	        bytes[i] = binary_string.charCodeAt(i);
+	    }
+	    return bytes.buffer;
 	};
 	
 	$scope.onInitAppended = function(e) {
@@ -955,7 +966,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	this.isActive = false;
 	this.chunkStart = 0;
-	this.chunkSize = 300000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
+	this.chunkSize = 500000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
 	this.totalLength = 0;
 	this.chunkTimeout = 100; //adjustible; default 500
 	this.url = null;

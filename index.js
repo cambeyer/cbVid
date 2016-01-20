@@ -17,6 +17,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
+var btoa = require('btoa');
 var nodemailer = require("nodemailer");
 
 //set the directory where files are served from and uploaded to
@@ -588,11 +589,13 @@ io.on('connection', function (socket) {
 						return;
 					}
 					var buffer = new Buffer(length);
-					console.log(dwnReq);
 					fs.read(fd, buffer, 0, length, dwnReq.range.start, function(err, num) {
 						if (!err) {
-							res.data = buffer;
-							socket.emit('download', res);
+							var key = getKey(dwnReq.username, dwnReq.session);
+							if (key && key.verified) {
+								res.data = CryptoJS.AES.encrypt(btoa([].reduce.call(new Uint8Array(buffer),function(p,c){return p+String.fromCharCode(c)},'')), key.content).toString();
+								socket.emit('download', res);
+							}
 						}
 					});
 				});
