@@ -588,6 +588,7 @@ io.on('connection', function (socket) {
 						return;
 					}
 					var buffer = new Buffer(length);
+					console.log(dwnReq);
 					fs.read(fd, buffer, 0, length, dwnReq.range.start, function(err, num) {
 						if (!err) {
 							res.data = buffer;

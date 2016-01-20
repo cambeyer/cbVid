@@ -488,8 +488,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .controller('playerController', function($scope, $rootScope, $state, $sce, $modal, UserObj, EncryptService, DownloadService) {
 	$rootScope.setTitle($rootScope.activeVideo.details.original);
-	$scope.videoFile;
-	
+
 	/*global MP4Box*/
 	$scope.mp4box = new MP4Box();
 	$scope.video;
@@ -498,9 +497,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
-			$scope.videoFile = videoFile;
 			/*global btoa*/
-			return btoa(EncryptService.encrypt($scope.videoFile));
+			return btoa(EncryptService.encrypt(videoFile));
 		}
 	};
 
@@ -628,21 +626,19 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			};
 
 			DownloadService.setUrl($scope.videoString($rootScope.activeVideo.filename));
-			DownloadService.setCallback(
-				function (response, end, error) { 
-					var nextStart = 0;
-					if (response) {
-						response.data.fileStart = response.range.start;
-						nextStart = $scope.mp4box.appendBuffer(response.data);
-						// console.log(nextStart);
-						if (end) {
-							$scope.mp4box.flush();
-						} else {
-							DownloadService.setChunkStart(nextStart); 
-						}
+			DownloadService.setCallback(function (response, end, error) { 
+				var nextStart = 0;
+				if (response && response.file == $scope.videoString($rootScope.activeVideo.filename)) {
+					response.data.fileStart = response.range.start;
+					nextStart = $scope.mp4box.appendBuffer(response.data);
+					// console.log(nextStart);
+					if (end) {
+						$scope.mp4box.flush();
+					} else {
+						DownloadService.setChunkStart(nextStart); 
 					}
 				}
-			);
+			});
 			DownloadService.start();
 		});
 		
@@ -959,7 +955,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	this.isActive = false;
 	this.chunkStart = 0;
-	this.chunkSize = 500000; //adjustible; smaller gives more round trips/overhead but takes less server resources
+	this.chunkSize = 300000; //adjustible; smaller gives more round trips/overhead but takes less server resources; default 1000000
 	this.totalLength = 0;
 	this.chunkTimeout = 100; //adjustible; default 500
 	this.url = null;
@@ -985,23 +981,19 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		this.chunkStart = 0;
 		this.totalLength = 0;
 		this.eof = false;
-		return this;
 	};
 	
 	this.setChunkStart = function(_start) {
 		this.chunkStart = _start;
 		this.eof = false;
-		return this;
 	};
 
 	this.setUrl = function(_url) {
 		this.url = _url;
-		return this;
 	};
 	
 	this.setCallback = function(_callback) {
 		this.callback = _callback;
-		return this;
 	};
 
 	this.getFile = function() {
@@ -1026,7 +1018,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	this.start = function() {
 		this.chunkStart = 0;
 		this.resume();
-		return this;
 	};
 	
 	this.resume = function() {
@@ -1034,7 +1025,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			this.isActive = true;
 			this.getFile();
 		}
-		return this;
 	};
 	
 	this.stop = function() {
@@ -1045,7 +1035,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				delete this.timeoutID;
 			}
 		}
-		return this;
 	};
 })
 
