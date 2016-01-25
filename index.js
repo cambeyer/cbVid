@@ -297,8 +297,8 @@ app.get('/download.mp4', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
 	if (filename) {
-		db.videos.find({ filename: filename, permissions: { username: req.query.username } }, { _id: 0 }, function (err, videos) {
-			if (!err && videos.length > 0) {
+		db.videos.findOne({ filename: filename, "permissions.username": req.query.username }, { _id: 0 }, function (err, video) {
+			if (!err && video) {
 				removeFromDone(filename);
 				var file = path.resolve(dir, filename);
 				fs.stat(file, function(err, stats) {
