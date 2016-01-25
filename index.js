@@ -296,25 +296,31 @@ var transcode = function (file, sessionVars) {
 app.get('/download.mp4', function (req, res){
 	var encryptedName = atob(req.query.file);
 	var filename = decrypt(req.query.username, req.query.session, encryptedName);
-	removeFromDone(filename);
 	if (filename) {
-		var file = path.resolve(dir, filename);
-		fs.stat(file, function(err, stats) {
-			if (err) {
-				deleteVideo(filename);
-				res.writeHead(404, {"Content-Type":"text/plain"});
-				res.end("Could not read file");
-				return;
+		db.videos.find({ filename: filename, permissions: { username: req.query.username } }, { _id: 0 }, function (err, videos) {
+			if (!err && videos.length > 0) {
+				removeFromDone(filename);
+				var file = path.resolve(dir, filename);
+				fs.stat(file, function(err, stats) {
+					if (err) {
+						deleteVideo(filename);
+						res.writeHead(404, {"Content-Type":"text/plain"});
+						res.end("Could not read file");
+						return;
+					}
+		
+					send(req, file, {maxAge: '10h'})
+						.on('error', function(err) {
+							console.log(err);
+						})
+						.on('headers', function(res, path, stat) {
+							res.setHeader('Content-Type', 'video/mp4');
+						})
+						.pipe(res);
+				});
+			} else {
+				res.sendStatus(401);
 			}
-
-			send(req, file, {maxAge: '10h'})
-				.on('error', function(err) {
-					console.log(err);
-				})
-				.on('headers', function(res, path, stat) {
-					res.setHeader('Content-Type', 'video/mp4');
-				})
-				.pipe(res);
 		});
 	} else {
 		res.sendStatus(401);
