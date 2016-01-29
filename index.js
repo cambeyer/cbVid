@@ -17,7 +17,6 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-var nodemailer = require("nodemailer");
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
@@ -30,19 +29,11 @@ fs.mkdir(dir, function(err) {
 
 app.use(busboy());
 
-app.use(function (req, res, next) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Range');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
-    next();
-});
-
 //files in the public directory can be directly queried for via HTTP
 app.use(express.static(path.join(__dirname, 'public')));
 
 //set up smtp service for sending email
-var transport = nodemailer.createTransport("direct", {debug: false});
+//var transport = nodemailer.createTransport("direct", {debug: false});
 
 var EMAIL_FROM_NAME = "cbVid";
 var EMAIL_FROM_ADDRESS = "no-reply@cbvid.com";
