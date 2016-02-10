@@ -11,13 +11,13 @@ sudo curl https://raw.githubusercontent.com/creationix/nvm/v0.30.2/install.sh | 
 #add nvm to the PATH
 source ~/.profile
 #install the latest stable node
-sudo nvm install stable
+nvm install stable
 #clone the repo
 git clone https://github.com/cambeyer/cbVid.git
 #change directories into the newly-cloned repo
 cd ~/cbVid
 #run npm to install all project dependencies
-sudo npm install
+npm install
 #add the repository for ffmpeg
 #sudo add-apt-repository ppa:kirillshkrogalev/ffmpeg-next -y
 sudo add-apt-repository ppa:mc3man/trusty-media -y
