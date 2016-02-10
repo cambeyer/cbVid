@@ -12,6 +12,8 @@ curl https://raw.githubusercontent.com/creationix/nvm/v0.30.2/install.sh | bash
 source ~/.profile
 #install the latest stable node
 nvm install stable
+#copy the version of node to the global folder
+n=$(which node);n=${n%/bin/node}; chmod -R 755 $n/bin/*; sudo cp -r $n/{bin,lib,share} /usr/local
 #clone the repo
 git clone https://github.com/cambeyer/cbVid.git
 #change directories into the newly-cloned repo
@@ -38,4 +40,4 @@ sudo echo "KEY HERE" >> ~/.ssh/authorized_keys
 #install libcap2-bin to allow port 80 binding
 sudo apt-get install libcap2-bin
 #allow nodejs to bind to port 80
-sudo setcap cap_net_bind_service=+ep `readlink -f \`which node\``
+sudo setcap cap_net_bind_service=+ep /usr/local/bin/node
