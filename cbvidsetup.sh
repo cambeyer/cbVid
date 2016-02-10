@@ -3,10 +3,15 @@
 sudo apt-get update
 #upgrade any packages that are out of date, keeping existing files and accepting all defaults
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
-#add the repository for nodejs
-curl -sL https://deb.nodesource.com/setup | sudo bash -
-#install node and gcc and git without prompting
-sudo apt-get install -y nodejs build-essential git
+#add dependencies for nvm and install git
+sudo apt-get install build-essential libssl-dev git
+#add nvm package to install node/npm
+#change the version number according to https://github.com/creationix/nvm/releases
+sudo curl https://raw.githubusercontent.com/creationix/nvm/v0.30.2/install.sh | bash
+#add nvm to the PATH
+source ~/.profile
+#install the latest stable node
+sudo nvm install stable
 #clone the repo
 git clone https://github.com/cambeyer/cbVid.git
 #change directories into the newly-cloned repo
@@ -29,7 +34,7 @@ sudo npm install
 #add the cloud9 key for authorized login
 sudo echo "KEY HERE" >> ~/.ssh/authorized_keys
 #run the cloud9 installer for hooking in from the interface
-curl -sL https://raw.githubusercontent.com/c9/install/master/install.sh | sudo bash
+#curl -sL https://raw.githubusercontent.com/c9/install/master/install.sh | sudo bash
 #install libcap2-bin to allow port 80 binding
 sudo apt-get install libcap2-bin
 #allow nodejs to bind to port 80
