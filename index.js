@@ -32,6 +32,14 @@ fs.mkdir(dir, function(err) {
 
 app.use(busboy());
 
+app.use(function (req, res, next) {
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'GET');
+	res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Range');
+	res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
+	next();
+});
+
 //files in the public directory can be directly queried for via HTTP
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -50,73 +58,77 @@ db.users.ensureIndex({ fieldName: 'username', unique: true });
 
 var transcode = function (stream, hash, res) {
 	var timestamp;
-	if (!streamInfo[hash]) {
-		streamInfo[hash] = {};
-	}
 	streamInfo[hash].sent = false;
-	var command = ffmpeg(stream)
-		.videoCodec('libx264')
-		.audioCodec('libmp3lame')
-		.size('?x720')
-		.audioChannels(2)
-		.addOptions([
-			'-sn',
-			'-async 1',
-			'-b:a 128k',
-			'-ar 44100',
-			'-b:v 1000k',
-			'-profile:v baseline',
-			'-preset:v superfast',
-			'-x264opts level=3.0',
-			'-threads 0',
-			'-flags +global_header',
-			'-map 0',
-			'-f segment',
-			'-segment_list ' + dir + hash + M3U8_EXT,
-			'-segment_format mpegts',
-			'-segment_list_flags live'
-		])
-		.on('start', function (cmdline) {
-			//console.log(cmdline);
-		})
-		.on('progress', function(progress) {
-			clearTimeout(timeout);
-			timestamp = progress.timemark;
-			if (!streamInfo[hash].sent) {
-				sendPlayListFile(hash, res, function(sent) {
-					if (sent) {
-						//console.log("Transcoding is sufficiently along");
+	fs.mkdir(dir + hash, function(err) {
+	    if (err && err.code !== 'EEXIST') {
+	    	console.log("Error creating folder");
+	    } else {
+			var command = ffmpeg(stream)
+				.videoCodec('libx264')
+				.audioCodec('libmp3lame')
+				.size('?x720')
+				.audioChannels(2)
+				.addOptions([
+					'-sn',
+					'-async 1',
+					'-b:a 128k',
+					'-ar 44100',
+					'-b:v 1000k',
+					'-profile:v baseline',
+					'-preset:v superfast',
+					'-x264opts level=3.0',
+					'-threads 0',
+					'-flags +global_header',
+					'-map 0',
+					'-f segment',
+					'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
+					'-segment_time 10',
+					'-segment_format mpegts',
+					'-segment_list_flags live'
+				])
+				.on('start', function (cmdline) {
+					//console.log(cmdline);
+				})
+				.on('progress', function(progress) {
+					clearTimeout(timeout);
+					timestamp = progress.timemark;
+					if (!streamInfo[hash].sent) {
+						sendPlayListFile(hash, res, function(sent) {
+							if (sent) {
+								//console.log("Transcoding is sufficiently along");
+							}
+						});
 					}
-				});
-			}
-			if (streamInfo[hash].lastRequest && Date.now() - streamInfo[hash].lastRequest > 30000) {
-				//console.log("No recent request has been made");
-				//command.kill();
-			}
-		})
-		.on('error', function (err, stdout, stderr) {
-			//console.log("Transcoding issue: " + err + stderr);
-		})
-		.save(dir + hash + '%05d' + TS_EXT);
-		
-		var timeout = setTimeout(function() {
-			if (!timestamp) {
-				console.log("No progress has been made; killing the process.");
-				res.end();
-				command.kill();
-			}
-		}, 60000);
+					if (streamInfo[hash].lastRequest && Date.now() - streamInfo[hash].lastRequest > 30000) {
+						//console.log("No recent request has been made");
+						//command.kill();
+					}
+				})
+				.on('error', function (err, stdout, stderr) {
+					//console.log("Transcoding issue: " + err + stderr);
+				})
+				.save(dir + hash + "/" + hash + "%05d" + TS_EXT);
+				
+			var timeout = setTimeout(function() {
+				if (!timestamp) {
+					console.log("No progress has been made; killing the process.");
+					res.end();
+					command.kill();
+				}
+			}, 60000);
+	    }
+	});
 };
 
 var sendPlayListFile = function(hash, res, callback) {
-	fs.access(dir + hash + M3U8_EXT, fs.F_OK, function(err) {
+	fs.access(dir + hash + "/stream" + M3U8_EXT, fs.F_OK, function(err) {
 		if (!err) {
-			checkPlaylistCount(fs.createReadStream(dir + hash + M3U8_EXT) , function(found) {
+			checkPlaylistCount(fs.createReadStream(dir + hash + "/stream" + M3U8_EXT) , function(found) {
 				if (found) {
 					streamInfo[hash].sent = true;
 					try {
 						res.setHeader('Content-Type', 'application/x-mpegurl');
-						withModifiedPlaylist(fs.createReadStream(dir + hash + M3U8_EXT), function(line) {
+						withModifiedPlaylist(fs.createReadStream(dir + hash + "/stream" + M3U8_EXT), function(line) {
 							res.write(line + '\n');
 						}, function() {
 							res.end();
@@ -180,7 +192,7 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 	var sequenceNumber = parseInt(filename.substring(MD5_LENGTH, filename.length), 10);
 	if (magnet) {
 		try {
-			var file = path.resolve(dir, filename + TS_EXT);
+			var file = path.resolve(dir + hash + "/", filename + TS_EXT);
 			send(req, file, {maxAge: '10h'})
 				.on('headers', function(res, path, stat) {
 					res.setHeader('Content-Type', 'video/mp2t');
@@ -188,7 +200,7 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 				.on('end', function() {
 					try {
 						//console.log(dir + hash + pad(sequenceNumber, filename.length - MD5_LENGTH) + TS_EXT);
-						fs.unlinkSync(dir + filename + TS_EXT);
+						//fs.unlinkSync(dir + filename + TS_EXT);
 						streamInfo[hash].lastSequence = sequenceNumber;
 						streamInfo[hash].lastRequest = Date.now();
 					} catch (e) { }
@@ -207,9 +219,13 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 				if (!err) {
 					magnet = parseTorrent.toMagnetURI(parsedTorrent);
 					var hash = magnet.split("btih:")[1].split("&")[0];
+					if (!streamInfo[hash]) {
+						streamInfo[hash] = {};
+					}
 					sendPlayListFile(hash, res, function(sent) {
-						if (!sent) {
+						if (!sent && !streamInfo[hash].torrenting) {
 							console.log("Initializing torrent request");
+							streamInfo[hash].torrenting = true;
 							var engine = torrentStream(magnet, {
 								verify: true,
 								dht: true,
