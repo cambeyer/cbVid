@@ -20,6 +20,7 @@ var atob = require('atob');
 var M3U8_EXT = ".m3u8";
 var TS_EXT = ".ts";
 var MD5_LENGTH = 40;
+var NO_PROGRESS_TIMEOUT = 120;
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
@@ -115,7 +116,7 @@ var transcode = function (stream, hash, res) {
 					res.end();
 					command.kill();
 				}
-			}, 60000);
+			}, NO_PROGRESS_TIMEOUT * 1000);
 	    }
 	});
 };
@@ -210,7 +211,7 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 	}
 });
 
-app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
+app.get('/:username/:session/:magnet/:magnet2' + M3U8_EXT, function (req, res){
 	var encryptedMagnet = atob(req.params.magnet);
 	var magnet = decrypt(req.params.username, req.params.session, encryptedMagnet);
 	if (magnet) {
@@ -327,7 +328,7 @@ var encrypt = function(username, sessionNumber, text, disregardVerification) {
 var fetchTorrentList = function(query, socket) {
 	request(torrentAPI + "get_token=get_token", function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
+			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;4;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
 			//console.log(torURL);
 			request(torURL, function (error, response, body) {
 				if (!error && response.statusCode == 200) {
@@ -397,6 +398,7 @@ io.on('connection', function (socket) {
 	});
 	socket.on('listtorrent', function(torReq) {
 		if (decrypt(torReq.username, torReq.session, torReq.encryptedPhrase) == "listtorrent") {
+			console.log("Searching torrents for query: " + torReq.query);
 			fetchTorrentList(torReq.query, socket);
 		} else {
 			socket.emit('verifyok', 'false');

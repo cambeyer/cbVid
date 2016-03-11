@@ -44,8 +44,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.title = title + " - cbVid";
 	};
 	
+	$rootScope.pasteTorrent = function() {
+		$rootScope.playTorrent("", prompt("Please paste a torrent or magnet link to stream"));
+	};
+	
 	$rootScope.playTorrent = function(title, magnet) {
 		$rootScope.activeVideo = {title: title, magnet: magnet};
+		$rootScope.setTitle(title);
 		$rootScope.setVideo();
 	};
 	
@@ -53,7 +58,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			$rootScope.playingVideo = videoFile;
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt($rootScope.playingVideo))) + "/stream.m3u8";
+			var magnet = btoa(EncryptService.encrypt($rootScope.playingVideo));
+			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + magnet + "/" + magnet + ".m3u8");
 		}
 	};
 
@@ -83,7 +89,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('.fp-engine').attr('preload', 'auto');
 			$('.fp-embed').remove();
 			$('.fp-brand').remove();
-			$('.fp-time').remove();
+			$('.fp-duration').remove();
+			$('.fp-remaining').remove();
+			//$('.fp-time').remove();
 			$('.fp-timeline').remove();
 			$('a[href*="flowplayer"]').remove();
 			$('.fp-context-menu').addClass('hidden');
