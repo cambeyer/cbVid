@@ -1,23 +1,19 @@
 <div class="container-fluid" style="height: 100%">
-	<div class="row" ng-show="!(videoList | isEmpty)">
-		<div ui-view class="col-lg-7"></div>
+	<div class="row">
+		<div class="col-lg-7">
+			<div style="text-align: center">
+				<div class="player"></div>
+				<h3 style="margin-bottom: 20px">
+					{{activeVideo.title}}
+				</h3>
+			</div>
+		</div>
 		<div class="col-lg-5">
 			<ul class="example-animate-container">
-				<li ng-show="search.text"><h3 style="margin-top: 0px">Search: {{search.text}}</h3></li>
-				<li ng-show="((videoList | filter:search.text) | isEmpty) && (torrentList | isEmpty)"><h3>No Results</h3></li>
-				<li ng-repeat="video in videoList | filter:search.text | orderBy: 'details.original'" class="animate-repeat ellipsis">
-					<button ng-if="video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="deleteVideo(video.filename)">
-						<span class="glyphicon glyphicon-trash"></span>
-					</button>
-					<button ng-if="!video.edit" style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="removeMe(video.filename)">
-						<span class="glyphicon glyphicon-remove"></span>
-					</button>
-					<span ng-show="video.filename == activeVideo.filename" class="activevideo" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original"></span>
-					<span ng-show="video.filename !== activeVideo.filename" style="cursor: pointer" ng-class="{'newvideo' : video.new }" ng-bind="video.details.original" ui-sref="cbvid.list({ filename: video.filename })"></span>
-				</li>
+				<li ng-show="search.text && (torrentList | isEmpty)"><h3>No Results</h3></li>
 				<li ng-if="search.text" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
-					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="sendTorrent(torrent.download)">
-						<span class="glyphicon glyphicon-cloud-download"></span>
+					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="playTorrent(torrent.title, torrent.download)">
+						<span class="glyphicon glyphicon-play-circle"></span>
 					</button>
 					<span ng-bind="torrent.title"></span>
 				</li>

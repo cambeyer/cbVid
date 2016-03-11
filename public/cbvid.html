@@ -1,112 +1,8 @@
-<script type="text/ng-template" id="uploadForm.html">
-	<div class="modal-header">
-		<h3 class="modal-title">Upload A Video</h3>
-	</div>
-	<div class="modal-body">
-		<div style="padding-bottom: 10px; padding-left: 10px">
-			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="file">File</label>
-			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="torrent">Torrent</label>
-			<label class="radio-inline"><input type="radio" name="optradio" ng-model="type" value="ingest">Ingest</label>
-		</div>
-		<table class="table">
-			<tr ng-show="type == 'file'">
-				<td>
-					<div class="input-group">
-						<span class="input-group-btn">
-							<span class="btn btn-primary btn-file">
-								Browse&hellip; <input type="file" id="file" onchange="angular.element(this).scope().fileChanged()">
-							</span>
-						</span>
-						<input type="text" class="form-control" readonly>
-					</div>
-    			</td>
-				<td align="right" style="padding-right: 0px"><button class="btn btn-default" id="upload" ng-click="upload()">Upload</button></td>
-			</tr>
-			<tr ng-show="type == 'torrent'">
-				<td width="100%">
-					<input type="text" ng-model="custom.magnet" class="form-control" placeholder="Magnet Link">
-					<div style="padding-left: 3px" class="checkbox">
-						<label><input type="checkbox" ng-model="custom.keep">Keep Original</label>
-					</div>
-				</td>
-				<td align="right" style="padding-right: 0px"><button class="btn btn-default" id="torrent" ng-click="sendTorrent()">Torrent</button></td>
-			</tr>
-			<tr ng-show="type == 'ingest'">
-				<td width="100%"><input type="text" ng-model="custom.ingest" class="form-control" placeholder="URL"></td>
-				<td align="right" style="padding-right: 0px"><button class="btn btn-default" id="ingest" ng-click="sendIngest()">Ingest</button></td>
-			</tr>
-		</table>
-		<viewers list="viewers"></viewers>
-	</div>
-	<div class="modal-footer">
-		<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
-	</div>
-</script>
-<script type="text/ng-template" id="progressForm.html">
-	<div class="modal-header">
-		<h3 class="modal-title">Video Progress</h3>
-	</div>
-	<div class="modal-body">
-		<table ng-if="!(procuring | isEmpty) || !(uploading | isEmpty) || !(processing | isEmpty)" width="100%">
-			<tr ng-hide="uploading | isEmpty" ng-repeat="(file, details) in uploading">
-				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
-					<div style="padding-top: 10px; padding-bottom: 10px">{{file}}</div>
-					<progressbar style="max-width: 400px" max="100" value="details.percent" type="success"><b>{{details.percent}}%</b></progressbar>
-				</td>
-			</tr>
-			<tr ng-hide="procuring | isEmpty" ng-repeat="(md5, details) in procuring">
-				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
-					<div style="padding-top: 10px; padding-bottom: 10px">{{details.name}}</div>
-					<progressbar style="max-width: 400px" max="100" value="details.percent" type="danger"><b>{{details.percent}}%</b></progressbar>
-				</td>
-			</tr>
-			<tr ng-hide="processing | isEmpty" ng-repeat="(md5, details) in processing">
-				<td align="center" style="border-top: 1px solid black; border-bottom: 1px solid black">
-					<div style="padding-top: 10px; padding-bottom: 10px">{{details.name}}</div>
-					<progressbar style="max-width: 400px" ng-if="details.percent" max="100" value="details.percent" type="warning"><b>{{details.percent}}%</b></progressbar>
-					<div ng-if="details.name && !details.percent" style="padding-bottom: 10px">Processed (hh:mm:ss): {{details.timestamp}}</div>
-				</td>
-			</tr>
-		</table>
-		<div ng-show="(procuring | isEmpty) && (uploading | isEmpty) && (processing | isEmpty)" style="text-align: center"><h3>No updates yet.</h3></div>
-	</div>
-	<div class="modal-footer">
-		<button class="btn btn-primary" type="button" ng-click="ok()">Close</button>
-	</div>
-</script>
-<script type="text/ng-template" id="updateForm.html">
-	<div class="modal-header">
-		<h3 class="modal-title">Video Details</h3>
-	</div>
-	<div class="modal-body">
-		<div class="form-horizontal">
-			<div class="form-group">
-				<label for="title" class="col-sm-2 control-label" style="text-align: left">Title</label>
-				<div class="col-sm-10">
-					<input type="text" class="form-control" id="title" placeholder="Video Title" ng-model="updateVideo.details.original">
-				</div>
-			</div>
-			<div class="form-group">
-				<label for="description" class="col-sm-2 control-label" style="text-align: left">Description</label>
-				<div class="col-sm-10">
-					<textarea class="form-control" rows="5" id="description" placeholder="Video Description" ng-model="updateVideo.details.description"></textarea>
-				</div>
-			</div>
-		</div>
-		<viewers list="updateVideo.permissions"></viewers>
-	</div>
-	<div class="modal-footer">
-		<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm pull-left" ng-click="deleteVideo(updateVideo.filename, close)">
-			<span class="glyphicon glyphicon-trash"></span>
-		</button>
-		<button class="btn btn-primary" type="button" ng-click="ok()">Save</button>
-	</div>
-</script>
 <nav class="navbar navbar-default navbar-static-top">
 	<div class="container-fluid">
 		<div class="navbar-header">
 			<a class="navbar-brand">
-				<img alt="cbVid" style="max-height: 23px" src="logo.png" ui-sref="cbvid.home">
+				<img alt="cbVid" style="max-height: 23px" src="logo.png" ui-sref="cbvid.list">
 			</a>
 		</div>
 		<div class="navbar-form navbar-left" role="search">
@@ -116,8 +12,6 @@
 		</div>
 		<div>
 			<ul class="nav navbar-nav navbar-right">
-				<li style="margin-right: 20px"><a ng-if="!(procuring | isEmpty) || !(uploading | isEmpty) || !(processing | isEmpty)" ng-click="showProgressDialog()">Progress <img src="loading_2.gif" style="max-height: 23px"></a></li>
-				<li><a ng-click="showUploadDialog()">Upload</a></li>
 				<li><a ng-click="logout()">Logout ({{$storage.username}})</a></li>
 			</ul>
 		</div>

@@ -8,57 +8,21 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
             templateUrl: 'auth.html',
             controller: 'authController'
         })
-        
-        .state('embed', {
-        	url: '/embed/:filename',
-        	controller: function($rootScope, $state, $stateParams) {
-        		if ($rootScope.canEmbed) {
-	        		$rootScope.embed = true;
-	        		$rootScope.canEmbed = false;
-	        		$state.go('cbvid.list', {filename: $stateParams.filename});
-        		}
-        	}
-        })
 
         .state('cbvid', {
             templateUrl: 'cbvid.html',
 			controller: 'containerController'
         })
 
-        .state('cbvid.home', {
-        	url: '/videos/',
-        	templateUrl: 'home.html',
-        	controller: 'homeController',
-			resolve: {
-				videos: function(VideoList, $rootScope, UserObj, EncryptService) {
-					$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
-					return VideoList.getList();
-				}
-			}
-        })
-
 		.state('cbvid.list', {
-			url: '/videos/:filename',
-			templateUrl: 'list.html',
-			controller: 'listController',
-			resolve: {
-				videos: function(VideoList, $rootScope, $stateParams, UserObj, EncryptService) {
-					$rootScope.params = $stateParams;
-					$rootScope.socket.emit('list', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('list') }));
-					return VideoList.getList();
-				}
-			}
-		})
-
-		.state('cbvid.list.player', {
-			templateUrl: 'player.html',
-			controller: 'playerController'
+			url: '/videos/',
+			templateUrl: 'list.html'
 		});
 
     $urlRouterProvider.otherwise('/auth');
 })
 
-.run(function($rootScope, $localStorage, $state, EncryptService, UserObj, VideoList) {
+.run(function($rootScope, $localStorage, $state, $sce, EncryptService, UserObj) {
 	$rootScope.$storage = $localStorage;
 	$rootScope.$storage.authed;
 	$rootScope.title;
@@ -70,12 +34,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		text: ''
 	};
 	
-	$rootScope.embed = false;
-	$rootScope.canEmbed = true;
-
-	$rootScope.uploading = {};
-	$rootScope.processing = {};
-	$rootScope.procuring = {};
+	$rootScope.activeVideo;
+	$rootScope.playingVideo;
 
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
@@ -83,21 +43,59 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
 	};
+	
+	$rootScope.playTorrent = function(title, magnet) {
+		$rootScope.activeVideo = {title: title, magnet: magnet};
+		$rootScope.setVideo();
+	};
+	
+	$rootScope.videoString = function (videoFile) {
+		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
+			$rootScope.playingVideo = videoFile;
+			/*global btoa*/
+			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt($rootScope.playingVideo))) + "/stream.m3u8";
+		}
+	};
+
+	$rootScope.setVideo = function () {
+		$('video').each(function() {
+			$($(this)[0]).attr('src', '');
+			$(this)[0].pause();
+			$(this)[0].load();
+		});
+		$("#flow").remove();
+		if ($rootScope.activeVideo.magnet) {
+			$('<div/>', { id: 'flow' }).appendTo('.player');
+			$("#flow").flowplayer({
+				fullscreen: true,
+				native_fullscreen: true,
+				autoPlay: true,
+			    clip: {
+			    	sources: [
+			              {
+			              	type: "application/x-mpegurl",
+			                src:  $rootScope.videoString($rootScope.activeVideo.magnet)
+			              }
+			        ]
+			    }
+			});
+
+			$('.fp-engine').attr('preload', 'auto');
+			$('.fp-embed').remove();
+			$('.fp-brand').remove();
+			$('.fp-time').remove();
+			$('.fp-timeline').remove();
+			$('a[href*="flowplayer"]').remove();
+			$('.fp-context-menu').addClass('hidden');
+			$('.fp-volume').css('right', '40px');
+		}
+	};
 
 	$rootScope.socket.on('reconnect', function (num) {
 		$rootScope.$apply(function () {
 			$rootScope.verify();
 		});
 	});
-
-	$rootScope.sendSubscriptions = function() {
-		for (var md5 in $rootScope.processing) {
-			$rootScope.socket.emit('subscribe', md5);
-		}
-		for (var md5 in $rootScope.procuring) {
-			$rootScope.socket.emit('subscribe', md5);
-		}
-	};
 
 	$rootScope.verify = function() {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
@@ -109,7 +107,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('verifyok', function(successBool) {
 		$rootScope.$storage.authed = successBool !== 'false';
 		if (!$rootScope.$storage.authed) {
-			//alert("Your session has expired.  Please log in again.");
 			$localStorage.$reset({
 				username: $rootScope.$storage.username
 			});
@@ -118,7 +115,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.staleQuery = '';
 			$state.reload();
 		} else {
-			$rootScope.sendSubscriptions();
 			if ($state.current.name == 'auth') {
 				$state.go('cbvid.list');
 			}
@@ -130,7 +126,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if (newValue && !oldValue) {
 				$rootScope.verify();
 			} else if (oldValue && !newValue) {
-				VideoList.reset();
 				EncryptService.reset();
 				$rootScope.search.text = '';
 				$rootScope.staleQuery = '';
@@ -139,66 +134,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	});
 
-	$rootScope.$watch(function () {return $rootScope.activeVideo}, function (newValue, oldValue) {
-		$rootScope.checkTransition();
-	});
-
-	$rootScope.checkTransition = function () {
-		if ($rootScope.activeVideo) {
-			//if the value of active video is adjusted, and is pointing to a valid video, make sure the url matches and start the player
-			$state.transitionTo('cbvid.list', {filename: $rootScope.activeVideo.filename}, {notify: false}).then(function() {
-				$state.go('cbvid.list.player');
-			});
-		} else { //if there is no active video, revert back to the home screen
-			$state.go('cbvid.home');
-		}
-	};
-
-	$rootScope.$watch(function () {return $rootScope.videoList}, function (newValue, oldValue) {
-		var found = false;
-		//this logic is for when a video is deleted and that's the one you were watching.
-		if ($rootScope.activeVideo) {
-			for (var i = 0; i < $rootScope.videoList.length; i++) {
-				if ($rootScope.videoList[i].filename == $rootScope.activeVideo.filename) {
-					found = true;
-					break;
-				}
-			}
-		}
-		if (!found) {
-			if ($rootScope.videoList.length > 0) {
-				try {
-					if (!$rootScope.params.filename) {
-						$rootScope.activeVideo = $rootScope.videoList[0];
-					}
-				} catch (e) {
-					$rootScope.activeVideo = $rootScope.videoList[0];
-				}
-			} else {
-				$rootScope.activeVideo = undefined;
-			}
-		}
-	}, true);
-
 	$rootScope.logout = function () {
 		$rootScope.socket.emit('logout', UserObj.getUser({ verification: EncryptService.encrypt('logout') }));
 	};
 
 	$rootScope.socket.on('logout', function(msg) {
 		if ($rootScope.$storage.username == msg.username && $rootScope.$storage.sessionNumber == msg.session) {
-			VideoList.reset();
 			$rootScope.search.text = '';
 			$rootScope.staleQuery = '';
 			$localStorage.$reset();
 			EncryptService.reset();
 			$state.go('auth');
 		}
-	});
-
-	$rootScope.socket.on('list', function (videoList) {
-		$rootScope.$apply(function() {
-			VideoList.load(videoList);
-		});
 	});
 
 	$rootScope.socket.on('listtorrent', function (torrentList) {
@@ -209,9 +156,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
 		//console.log(fromState.name + " to " + toState.name);
-		if (toState.name == 'embed' && !$rootScope.canEmbed) {
-			event.preventDefault();
-		}
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
 				$rootScope.pendingState = String(toState.name);
@@ -237,10 +181,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.loading = false;
 	$scope.confirmPassword = false;
 	$rootScope.srpClient;
-
-	$rootScope.uploading = {};
-	$rootScope.processing = {};
-	$rootScope.procuring = {};
 
 	$rootScope.credentials = {
 		password: "",
@@ -334,8 +274,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .controller('containerController', function($scope, $rootScope, $modal, $state, $timeout, EncryptService, UserObj) {
-	$rootScope.viewers = [];
-	$rootScope.activeVideo;
 	var timer;
 
 	$scope.searchtor = function() {
@@ -349,456 +287,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.staleQuery = $rootScope.search.text;
 			}
 		}, 2000);
-	};
-
-	$scope.sendTorrent = function(torrentLink) {
-		$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt(torrentLink), viewers: [] }));
-		$scope.showProgressDialog();
-	};
-
-	$scope.showUploadDialog = function () {
-		$scope.uploadModal = $modal.open({
-			animation: true,
-			templateUrl: 'uploadForm.html',
-			controller: 'UploadForm',
-			size: 'md',
-			scope: $scope
-		});
-
-		$scope.uploadModal.result.then(function (shouldShowProgress) {
-			if (shouldShowProgress) {
-				$scope.showProgressDialog();
-			}
-		});
-	};
-
-	$scope.showProgressDialog = function () {
-		$scope.progressModal = $modal.open({
-			animation: true,
-			templateUrl: 'progressForm.html',
-			controller: 'ProgressForm',
-			size: 'md',
-			scope: $scope
-		});
-	};
-
-	$scope.uploadFile = function () {
-		if (document.getElementById("file").files.length > 0) {
-			var oData = new FormData();
-			oData.append("username", $rootScope.$storage.username);
-			oData.append("session", $rootScope.$storage.sessionNumber);
-			oData.append("date", EncryptService.encrypt(Date.now().toString()));
-			oData.append("viewers", angular.toJson($rootScope.viewers));
-			$rootScope.viewers = [];
-			oData.append("file", document.getElementById("file").files[0]);
-			var filename = document.getElementById("file").files[0].name;
-			$rootScope.uploading[filename] = {};
-			$rootScope.uploading[filename].percent = 0;
-			var oReq = new XMLHttpRequest();
-			oReq.upload.addEventListener('progress', function (e) {
-				$scope.$apply(function () {
-					$rootScope.uploading[filename].percent = Math.floor(e.loaded / e.total * 100).toFixed(0);
-				});
-			}, false);
-			oReq.open("post", "upload", true);
-			oReq.responseType = "text";
-			oReq.onreadystatechange = function () {
-				if (oReq.readyState == 4 && oReq.status == 200) {
-					var md5 = oReq.response;
-					$scope.$apply(function () {
-						delete $rootScope.uploading[filename];
-						$rootScope.processing[md5] = {};
-						$rootScope.processing[md5].percent = 0;
-						$rootScope.sendSubscriptions();
-					});
-				} else if (oReq.readyState == 4 && oReq.status !== 200) {
-					alert("There was an error uploading your file");
-				}
-			};
-			$("#file").replaceWith($("#file").clone());
-			oReq.send(oData);
-			return true;
-		} else {
-			return false;
-		}
-	};
-
-	$rootScope.socket.on('procuring', function(obj) {
-		$scope.$apply(function () {
-			$rootScope.procuring[obj.md5] = {};
-			$rootScope.procuring[obj.md5].percent = 0;
-			$rootScope.procuring[obj.md5].name = obj.name;
-			$rootScope.sendSubscriptions();
-		});
-	});
-
-	$rootScope.socket.on('processing', function (obj) {
-		$scope.$apply(function () {
-			$rootScope.processing[obj.md5] = {};
-			$rootScope.processing[obj.md5].percent = 0;
-			$rootScope.processing[obj.md5].name = obj.name;
-			$rootScope.sendSubscriptions();
-		});
-	});
-
-	$rootScope.socket.on('progress', function (msg){
-		$scope.$apply(function () {
-			var relevantArr;
-			if (msg.type == 'processing') {
-				relevantArr = $rootScope.processing;
-			} else {
-				relevantArr = $rootScope.procuring;
-			}
-			var percent;
-			if (relevantArr[msg.md5]) {
-				if (msg.percent) {
-					percent = Math.floor(msg.percent).toFixed(0);
-					relevantArr[msg.md5].percent = percent;
-				} else {
-					delete relevantArr[msg.md5].percent;
-				}
-				if (msg.timestamp) {
-					relevantArr[msg.md5].timestamp = msg.timestamp;
-				}
-				if (!relevantArr[msg.md5].name && msg.name) {
-					relevantArr[msg.md5].name = msg.name;
-				}
-			}
-			if (percent >= 100) {
-				try {
-					delete relevantArr[msg.md5];
-					$rootScope.socket.emit('unsubscribe', msg.md5);
-					if (msg.type == "processing" && Object.keys($rootScope.processing).length == 0 && Object.keys($rootScope.procuring).length == 0 && Object.keys($rootScope.uploading).length == 0) {
-						$scope.progressModal.close();
-					}
-				} catch (e) {}
-			}
-		});
-	});
-})
-
-.controller('homeController', function ($scope, $rootScope, $state) {
-	$rootScope.setTitle("Home");
-	$rootScope.checkTransition();
-})
-
-.controller('playerController', function($scope, $rootScope, $state, $sce, $modal, EncryptService) {
-	$rootScope.setTitle($rootScope.activeVideo.details.original);
-	$scope.videoFile;
-	
-	$rootScope.canEmbed = false;
-
-	$scope.videoString = function (videoFile) {
-		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
-			$scope.videoFile = videoFile;
-			/*global btoa*/
-			return $sce.trustAsResourceUrl("./download.mp4?" + "username=" + $rootScope.$storage.username + "&session=" + $rootScope.$storage.sessionNumber + "&file=" + btoa(EncryptService.encrypt($scope.videoFile)));
-		}
-	};
-
-	$scope.showUpdateDialog = function () {
-		$scope.progressModal = $modal.open({
-			animation: true,
-			templateUrl: 'updateForm.html',
-			controller: 'UpdateForm',
-			size: 'md',
-			scope: $scope
-		});
-	};
-
-	$scope.setVideo = function () {
-		$('video').each(function() {
-			$($(this)[0]).attr('src', '');
-			$(this)[0].pause();
-			$(this)[0].load();
-		});
-		$("#flow").remove();
-		if ($rootScope.activeVideo.filename) {
-			delete $rootScope.params.filename;
-			$('<div/>', { id: 'flow' }).appendTo('.player');
-			$("#flow").flowplayer({
-				fullscreen: true,
-				native_fullscreen: true,
-			    clip: {
-			    	sources: [
-			              {
-			              	type: "video/mp4",
-			                src:  $scope.videoString($rootScope.activeVideo.filename)
-			              }
-			        ]
-			    }
-			});
-
-			if ($rootScope.embed) {
-				$('#flow').css('max-width', '100%');
-			}
-			$('.fp-engine').attr('preload', 'auto');
-			$('.fp-embed').remove();
-			$('.fp-brand').remove();
-			$('a[href*="flowplayer"]').remove();
-			$('.fp-context-menu').addClass('hidden');
-			$('.fp-volume').css('right', '40px');
-		}
-	};
-
-	$scope.setVideo();
-})
-
-.controller('listController', function ($scope, $rootScope, $state, $timeout, $document, EncryptService, UserObj) {
-
-	$scope.deleteVideo = function (filename, callback) {
-		if (confirm("Do you really want to delete this video?")) {
-			$rootScope.socket.emit('delete', UserObj.getUser({ file: EncryptService.encrypt(filename) }));
-			if (callback) {
-				callback();
-			}
-		}
-	};
-
-	$scope.removeMe = function (filename) {
-		if (confirm("Do you really want to remove your access to this video?")) {
-			$rootScope.socket.emit('remove', UserObj.getUser({ file: EncryptService.encrypt(filename) }));
-		}
-	};
-
-	$scope.syncURL = function() {
-		var found = false;
-		//if the url doesn't match the intended video, attempt to find that in the list of videos
-		for (var i = 0; i < $rootScope.videoList.length; i++) {
-			if ($rootScope.videoList[i].filename == $rootScope.params.filename) {
-				$rootScope.activeVideo = $rootScope.videoList[i];
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			if ($rootScope.videoList.length > 0) {
-				//if there is at least one video the user has access to, default to that in lieu of the intended video
-				if ($rootScope.activeVideo && $rootScope.activeVideo.filename !== $rootScope.videoList[0].filename) {
-					$rootScope.activeVideo = $rootScope.videoList[0];
-				} else {
-					$rootScope.checkTransition();
-				}
-			} else {
-				if ($rootScope.activeVideo) {
-					$rootScope.activeVideo = undefined;
-				} else {
-					$rootScope.checkTransition();
-				}
-			}
-		}
-	};
-
-	if ((!$rootScope.activeVideo && $rootScope.params.filename) || ($rootScope.activeVideo && $rootScope.params.filename && ($rootScope.activeVideo.filename !== $rootScope.params.filename))) {
-		//there is no active video, but there is a url -OR-
-		//there is an active video, but it doesn't match the given url
-		$scope.syncURL();
-	}
-})
-
-.controller('UploadForm', function ($scope, $modalInstance, $rootScope, EncryptService, UserObj) {
-
-	$scope.type = "file";
-	$scope.custom = {
-		magnet: "",
-		ingest: "",
-		keep: false
-	};
-
-	$scope.ok = function () {
-		$modalInstance.close(false);
-	};
-	/*
-	$scope.$on('modal.closing', function(event, reason, closed) {
-		event.preventDefault();
-	});
-	*/
-
-	$scope.bootstrap = function() {
-		$('input[type=file]').bootstrapFileInput();
-	};
-
-	$scope.fileChanged = function() {
-		var input = $("#file");
-		input.parents('.input-group').find(':text').val(input.val().replace(/\\/g, '/').replace(/.*\//, ''));
-	};
-
-	$scope.sendTorrent = function() {
-		if ($scope.custom.magnet) {
-			$rootScope.socket.emit('torrent', UserObj.getUser({ torrentLink: EncryptService.encrypt($scope.custom.magnet), viewers: angular.toJson($rootScope.viewers), keep: $scope.custom.keep }));
-			$rootScope.viewers = [];
-			$scope.custom.magnet = "";
-			$scope.custom.keep = "";
-			$modalInstance.close(true);
-		}
-	};
-
-	$scope.sendIngest = function() {
-		if ($scope.custom.ingest) {
-			$rootScope.socket.emit('ingest', UserObj.getUser({ ingestLink: EncryptService.encrypt($scope.custom.ingest), viewers: angular.toJson($rootScope.viewers) }));
-			$rootScope.viewers = [];
-			$scope.custom.ingest = "";
-			$modalInstance.close(true);
-		}
-	};
-
-	$scope.upload = function() {
-		if ($scope.uploadFile()) {
-			$modalInstance.close(true);
-		}
-	};
-})
-
-.controller('ProgressForm', function ($scope, $modalInstance) {
-	$scope.ok = function () {
-		$modalInstance.close();
-	};
-})
-
-.controller('UpdateForm', function ($scope, $rootScope, $modalInstance, UserObj, EncryptService) {
-	$scope.updateVideo = JSON.parse(angular.toJson($rootScope.activeVideo));
-	delete $scope.updateVideo.edit;
-	delete $scope.updateVideo.new;
-	for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
-		if ($scope.updateVideo.permissions[i].username == $rootScope.$storage.username) {
-			$scope.updateVideo.permissions.splice(i, 1);
-			break;
-		}
-	}
-	$scope.close = function() {
-		$modalInstance.close();
-	};
-	$scope.ok = function () {
-		var viewersOK = true;
-		for (var i = 0; i < $scope.updateVideo.permissions.length; i++) {
-			if ($scope.updateVideo.permissions[i].username.indexOf('@') < 1) {
-				viewersOK = false;
-				break;
-			}
-		}
-		if (!viewersOK) {
-			alert("Please use valid e-mail addresses for viewers.");
-			$scope.loading = false;
-		} else {
-			$rootScope.setTitle($scope.updateVideo.details.original);
-			$rootScope.socket.emit('update', UserObj.getUser({ updateVideo: EncryptService.encrypt(angular.toJson($scope.updateVideo)) }));
-			$modalInstance.close();
-		}
-	};
-})
-
-.directive('viewers', function() {
-	return {
-		scope: {
-            list: '='
-        },
-		replace: true,
-		restrict: 'E',
-		template: '' +
-			'<div>' +
-				'<table ng-if="list.length > 0" class="table table-striped">' +
-					'<tr>' +
-						'<td>Viewer</td>' +
-						'<td align="right" style="padding-right: 25px">Action</td>' +
-					'</tr>' +
-					'<tr ng-repeat="user in list">' +
-						'<td>' +
-							'<input ng-model="user.username" ng-change="checkViewers()" ng-trim="false" class="form-control" type="text" placeholder="Username">' +
-						'</td>' +
-						'<td align="right" style="padding-right: 0px">' +
-							'<button class="btn btn-default" ng-click="list.splice($index, 1)">Remove</button>' +
-						'</td>' +
-					'</tr>' +
-				'</table>' +
-				'<div style="padding-bottom: 20px; text-align: right">' +
-					'<button class="btn btn-primary" ng-click="list.push({username: \'\', isowner: \'false\'})">+Viewer</button>' +
-				'</div>' +
-			'</div>',
-		controller: function($scope) {
-			$scope.checkViewers = function () {
-				for (var i = 0; i < $scope.list.length; i++) {
-					$scope.list[i].username = $scope.list[i].username.replace(/[^\w\.@-]/g, '');
-				}
-			};
-		}
-	};
-})
-
-.service('VideoList', function($q, $rootScope, $timeout, $state) {
-	this.promise;
-	this.fetched;
-	this.reset = function () {
-		this.fetched = false;
-		$rootScope.videoList = [];
-	};
-	this.reset();
-	this.getList = function() {
-		this.promise = $q.defer();
-		if (this.fetched) {
-			this.promise.resolve($rootScope.videoList);
-		}
-		return this.promise.promise;
-	};
-	this.load = function (videos) {
-		if (videos.username == $rootScope.$storage.username) {
-			var clearNew = false;
-			for (var i = 0; i < $rootScope.videoList.length; i++) {
-				$rootScope.videoList[i].remove = true;
-			}
-			for (var i = 0; i < videos.edit.length; i++) {
-				videos.edit[i].edit = true;
-				for (var j = 0; j < $rootScope.videoList.length; j++) {
-					if (videos.edit[i].filename == $rootScope.videoList[j].filename) {
-						delete $rootScope.videoList[j].permissions;
-						delete $rootScope.videoList[j].remove;
-						$.extend(true, $rootScope.videoList[j], videos.edit[i]);
-						videos.edit[i].used = true;
-						break;
-					}
-				}
-				if (!videos.edit[i].used) {
-					videos.edit[i].new = true;
-					clearNew = true;
-					$rootScope.videoList.push(videos.edit[i]);
-				}
-			}
-			for (var i = 0; i < videos.view.length; i++) {
-				videos.view[i].edit = false;
-				for (var j = 0; j < $rootScope.videoList.length; j++) {
-					if (videos.view[i].filename == $rootScope.videoList[j].filename) {
-						delete $rootScope.videoList[j].permissions;
-						delete $rootScope.videoList[j].remove;
-						$.extend(true, $rootScope.videoList[j], videos.view[i]);
-						videos.view[i].used = true;
-						break;
-					}
-				}
-				if (!videos.view[i].used) {
-					videos.view[i].new = true;
-					clearNew = true;
-					$rootScope.videoList.push(videos.view[i]);
-				}
-			}
-			for (var i = 0; i < $rootScope.videoList.length; i++) {
-				if ($rootScope.videoList[i].remove) {
-					$rootScope.videoList[i] = undefined;
-					$rootScope.videoList.splice(i, 1);
-					i--;
-				}
-			}
-			if (clearNew) {
-				$timeout(function() {
-					for (var i = 0; i < $rootScope.videoList.length; i++) {
-						delete $rootScope.videoList[i].new;
-					}
-				}, 2000);
-			}
-			//$rootScope.videoList = [].concat($rootScope.videoList.edit).concat($rootScope.videoList.view);
-			if (!this.fetched) {
-				this.promise.resolve($rootScope.videoList);
-			}
-			this.fetched = true;
-		}
 	};
 })
 
