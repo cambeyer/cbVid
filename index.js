@@ -138,19 +138,22 @@ var transcode = function (stream, hash) {
 				.videoCodec('libx264')
 				.audioCodec('libmp3lame')
 				.size('?x720')
+				.fps(30)
 				.audioChannels(2)
 				.addOptions([
 					'-sn',
 					'-async 1',
 					'-b:a 128k',
 					'-ar 44100',
-					'-b:v 1000k',
+					'-b:v 1024k',
+					'-pix_fmt yuv420p',
 					'-profile:v baseline',
 					'-preset:v superfast',
 					'-x264opts level=3.0',
 					'-threads 0',
 					'-flags +global_header',
-					'-map 0',
+					'-map 0:v:0',
+					'-map 0:a:0',
 					'-f segment',
 					'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
 					'-segment_time 10',
@@ -195,7 +198,7 @@ var transcode = function (stream, hash) {
 					}
 				})
 				.on('error', function (err, stdout, stderr) {
-					console.log("Transcoding issue: " + err);
+					console.log("Transcoding issue: " + stderr);
 				})
 				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				

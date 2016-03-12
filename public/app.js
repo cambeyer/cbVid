@@ -39,13 +39,21 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
+	
+	/*global flowplayer*/
+	flowplayer(function (api, root) {
+		api.on("ready", function () {
+			api.seek(0, function() {});
+		});
+	});
 
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
 	};
 	
 	$rootScope.pasteTorrent = function() {
-		$rootScope.playTorrent("", prompt("Please paste a torrent or magnet link to stream"));
+		var magnet = prompt("Please paste a torrent or magnet link to stream");
+		$rootScope.playTorrent(magnet.split("&dn=")[1].split("&")[0], magnet);
 	};
 	
 	$rootScope.playTorrent = function(title, magnet) {
@@ -71,7 +79,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.magnet) {
 			$('<div/>', { id: 'flow' }).appendTo('.player');
-			$("#flow").flowplayer({
+			var api = $("#flow").flowplayer({
 				fullscreen: true,
 				native_fullscreen: true,
 				autoPlay: true,
