@@ -132,7 +132,7 @@ var checkRemove = function(hash) {
 	});
 };
 
-var transcode = function (stream, hash) {
+var transcode = function (stream, hash, engine) {
 	var lastUpdate;
 	var totalDuration;
 	fs.mkdir(dir + hash, function(err) {
@@ -187,11 +187,13 @@ var transcode = function (stream, hash) {
 					//console.log(cmdline);
 				})
 				.on('end', function() {
-					db.videos.update({ hash: hash }, { $set: { torrenting: false } }, {}, function (err) {
-						if (err) {
-							console.log("Could not update video to terminated status");
-						}
-					});	
+					engine.remove(false, function() {
+						db.videos.update({ hash: hash }, { $set: { torrenting: false } }, {}, function (err) {
+							if (err) {
+								console.log("Could not update video to terminated status");
+							}
+						});	
+					});
 				})
 				.on('progress', function(progress) {
 					clearTimeout(timeout);
@@ -404,7 +406,7 @@ var startTorrent = function(hash, magnet) {
 						}
 					}
 					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-					transcode(largestFile.createReadStream(), hash);
+					transcode(largestFile.createReadStream(), hash, engine);
 				}
 			});
 		} else {
