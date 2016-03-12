@@ -17,10 +17,16 @@ var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
 
+var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
+
+var DB_EXT = '.db';
+
 var M3U8_EXT = ".m3u8";
 var TS_EXT = ".ts";
-var MD5_LENGTH = 40;
-var NO_PROGRESS_TIMEOUT = 120;
+var SEQUENCE_SEPARATOR = "_";
+var NO_PROGRESS_TIMEOUT = 120; //seconds
+var DB_UPDATE_FREQUENCY = 5; //seconds
+var DAYS_RETENTION_PERIOD = 5; //days
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
@@ -45,24 +51,88 @@ app.use(function (req, res, next) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 var userKeys = {};
-
-var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
-
-var DB_EXT = '.db';
-
-var streamInfo = {};
+var needingResponse = {};
 
 var db = {};
-db.users = new nedb({ filename: __dirname + "/users" + DB_EXT, autoload: true });
+db.users = new nedb({ filename: dir + "/users" + DB_EXT, autoload: true });
 db.users.persistence.setAutocompactionInterval(200000);
 db.users.ensureIndex({ fieldName: 'username', unique: true });
 
-var transcode = function (stream, hash, res) {
-	var timestamp;
-	streamInfo[hash].sent = false;
+db.videos = new nedb({ filename: dir + "/videos" + DB_EXT, autoload: true});
+db.videos.persistence.setAutocompactionInterval(200000);
+db.videos.ensureIndex({ fieldName: 'hash', unique: true });
+
+var getDirs = function (dir) {
+    var dirs = [];
+    var contents = fs.readdirSync(dir);
+    for (var i in contents) {
+        var name = dir + '/' + contents[i];
+        if (fs.statSync(name).isDirectory()) {
+            dirs.push(name);
+        }
+    }
+    return dirs;
+};
+
+var cleanup = function() {
+	var dirs = getDirs(dir);
+	for (var i = 0; i < dirs.length; i++) {
+		checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1]);
+	}
+	db.videos.find({ }, function(err, videos) {
+		if (!err) {
+			for (var i = 0; i < videos.length; i++) {
+				if (videos[i].hash) {
+					try {
+						fs.statSync(dir + videos[i].hash);
+					} catch (e) {
+						db.videos.remove({ hash: videos[i].hash }, {}, function(err, numRemoved) {
+							if (!err) {
+								console.log("Removed " + numRemoved + " abandoned records.");
+							}
+						});
+					}
+				}
+			}
+		}
+	});
+};
+
+var deleteFolderRecursive = function(path) {
+	if (fs.existsSync(path)) {
+	fs.readdirSync(path).forEach(function(file, index){
+		var curPath = path + "/" + file;
+		if(fs.lstatSync(curPath).isDirectory()) {
+			deleteFolderRecursive(curPath);
+		} else {
+			fs.unlinkSync(curPath);
+		}
+	});
+	fs.rmdirSync(path);
+	}
+};
+
+var checkRemove = function(hash) {
+	db.videos.find({ hash: hash }, function(err, videos) {
+		if (!err && videos.length == 0) {
+			try {
+				console.log("Removing " + dir + hash);
+				deleteFolderRecursive(dir + hash);
+			} catch (e) { }
+		} else if (videos.length == 1) {
+			if (videos[0].torrenting || (!videos[0].terminated && (Date.now() - videos[0].timeStarted)/1000/60/60/24 > DAYS_RETENTION_PERIOD)) {
+				console.log("Removing " + dir + hash + " becuase it was not finished or is too old");
+				deleteFolderRecursive(dir + hash);
+			}
+		}
+	});
+};
+
+var transcode = function (stream, hash) {
+	var lastUpdate;
 	fs.mkdir(dir + hash, function(err) {
 	    if (err && err.code !== 'EEXIST') {
-	    	console.log("Error creating folder");
+	    	console.log("Transcode: error creating video folder");
 	    } else {
 			var command = ffmpeg(stream)
 				.videoCodec('libx264')
@@ -90,58 +160,93 @@ var transcode = function (stream, hash, res) {
 				.on('start', function (cmdline) {
 					//console.log(cmdline);
 				})
+				.on('end', function() {
+					db.videos.update({ hash: hash }, { $set: { torrenting: false } }, {}, function (err) {
+						if (err) {
+							console.log("Could not update video to terminated status");
+						}
+					});	
+				})
 				.on('progress', function(progress) {
 					clearTimeout(timeout);
-					timestamp = progress.timemark;
-					if (!streamInfo[hash].sent) {
-						sendPlayListFile(hash, res, function(sent) {
-							if (sent) {
-								//console.log("Transcoding is sufficiently along");
+					var now = Date.now();
+					if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
+						lastUpdate = Date.now();
+						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
+							if (!err && vidEntry != null) {
+								var seconds = convertToSeconds(progress.timemark);
+								var ratio = seconds / ((now - vidEntry.timeStarted) / 1000);
+								db.videos.update({ hash: hash }, { $set: { ratio: ratio } }, {}, function (err) {
+									if (!err) {
+										if (ratio < 1) {
+											//console.log("Transcode: video " + hash + " has a ratio of: " + ratio + " at " + seconds + " seconds");
+										}
+									} else {
+										console.log("Transcode: could not update video ratio");
+									}
+								});
 							}
 						});
 					}
-					if (streamInfo[hash].lastRequest && Date.now() - streamInfo[hash].lastRequest > 30000) {
-						//console.log("No recent request has been made");
-						//command.kill();
+					if (needingResponse[hash]) {
+						for (var uniqueIdentifier in needingResponse[hash]) {
+							trySendPlayListFile(hash, uniqueIdentifier);
+						}
 					}
 				})
 				.on('error', function (err, stdout, stderr) {
-					//console.log("Transcoding issue: " + err + stderr);
+					console.log("Transcoding issue: " + err);
 				})
-				.save(dir + hash + "/" + hash + "%05d" + TS_EXT);
+				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				
 			var timeout = setTimeout(function() {
-				if (!timestamp) {
-					console.log("No progress has been made; killing the process.");
-					res.end();
-					command.kill();
+				console.log("No progress has been made; killing the process.");
+				command.kill();
+				deleteFolderRecursive(dir + hash);
+				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } }, {}, function (err) {
+					if (err) {
+						console.log("Could not update video to terminated status");
+					}
+				});
+				for (var uniqueIdentifier in needingResponse[hash]) {
+					needingResponse[hash][uniqueIdentifier].end();
+					delete needingResponse[hash][uniqueIdentifier];
 				}
+				delete needingResponse[hash];
 			}, NO_PROGRESS_TIMEOUT * 1000);
 	    }
 	});
 };
 
-var sendPlayListFile = function(hash, res, callback) {
-	fs.access(dir + hash + "/stream" + M3U8_EXT, fs.F_OK, function(err) {
+var convertToSeconds = function(timemark) {
+	var tt = timemark.split(":");
+	return tt[0]*3600 + tt[1]*60 + tt[2]*1;
+};
+
+var trySendPlayListFile = function(hash, uniqueIdentifier) {
+	var filename = dir + hash + "/stream" + M3U8_EXT;
+	fs.access(filename, fs.F_OK, function(err) {
 		if (!err) {
-			checkPlaylistCount(fs.createReadStream(dir + hash + "/stream" + M3U8_EXT) , function(found) {
+			checkPlaylistCount(fs.createReadStream(filename) , function(found) {
 				if (found) {
-					streamInfo[hash].sent = true;
 					try {
-						res.setHeader('Content-Type', 'application/x-mpegurl');
-						withModifiedPlaylist(fs.createReadStream(dir + hash + "/stream" + M3U8_EXT), function(line) {
-							res.write(line + '\n');
-						}, function() {
-							res.end();
-							callback(true);
-						});
+						var res = needingResponse[hash][uniqueIdentifier];
+						if (!res.handled) {
+							res.handled = true;
+							res.setHeader('Content-Type', 'application/x-mpegurl');
+							withModifiedPlaylist(fs.createReadStream(filename), function(line) {
+								res.write(line + '\n');
+							}, function() {
+								res.end();
+								delete needingResponse[hash][uniqueIdentifier];
+								if (Object.keys(needingResponse[hash]).length == 0) {
+									delete needingResponse[hash];
+								}
+							});
+						}
 					} catch (e) {}
-				} else {
-					callback(false);
 				}
 			});
-		} else {
-			callback(false);
 		}
 	});
 };
@@ -179,18 +284,12 @@ function checkPlaylistCount(stream, cb) {
 	});
 }
 
-function pad(num, size) {
-	var s = num + "";
-	while (s.length < size) s = "0" + s;
-	return s;
-}
-
 app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 	var encryptedMagnet = atob(req.params.magnet);
 	var magnet = decrypt(req.params.username, req.params.session, encryptedMagnet);
 	var filename = req.params.filename;
-	var hash = filename.substr(0, MD5_LENGTH);
-	var sequenceNumber = parseInt(filename.substring(MD5_LENGTH, filename.length), 10);
+	var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
+	//var sequenceNumber = parseInt(filename.substring(filename.indexOf(SEQUENCE_SEPARATOR) + SEQUENCE_SEPARATOR.length, filename.length), 10);
 	if (magnet) {
 		try {
 			var file = path.resolve(dir + hash + "/", filename + TS_EXT);
@@ -198,52 +297,67 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 				.on('headers', function(res, path, stat) {
 					res.setHeader('Content-Type', 'video/mp2t');
 				})
-				.on('end', function() {
-					try {
-						//console.log(dir + hash + pad(sequenceNumber, filename.length - MD5_LENGTH) + TS_EXT);
-						//fs.unlinkSync(dir + filename + TS_EXT);
-						streamInfo[hash].lastSequence = sequenceNumber;
-						streamInfo[hash].lastRequest = Date.now();
-					} catch (e) { }
-				})
+				.on('end', function() {})
 				.pipe(res);
 		} catch (e) {}
 	}
 });
 
-app.get('/:username/:session/:magnet/:magnet2' + M3U8_EXT, function (req, res){
+var getMagnet = function(source, callback) {
+	parseTorrent.remote(source, function (err, parsedTorrent) {
+		callback(err, parseTorrent.toMagnetURI(parsedTorrent));
+	});
+};
+
+var getHash = function(magnet) {
+	return magnet.split("btih:")[1].split("&")[0];
+};
+
+app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 	var encryptedMagnet = atob(req.params.magnet);
 	var magnet = decrypt(req.params.username, req.params.session, encryptedMagnet);
+	var uniqueIdentifier = req.params.username + req.params.session;
 	if (magnet) {
 		try {
-			parseTorrent.remote(magnet, function (err, parsedTorrent) {
+			getMagnet(magnet, function(err, magnet) {
 				if (!err) {
-					magnet = parseTorrent.toMagnetURI(parsedTorrent);
-					var hash = magnet.split("btih:")[1].split("&")[0];
-					if (!streamInfo[hash]) {
-						streamInfo[hash] = {};
+					var hash = getHash(magnet);
+					if (!needingResponse[hash]) {
+						needingResponse[hash] = {};
 					}
-					sendPlayListFile(hash, res, function(sent) {
-						if (!sent && !streamInfo[hash].torrenting) {
-							console.log("Initializing torrent request");
-							streamInfo[hash].torrenting = true;
-							var engine = torrentStream(magnet, {
-								verify: true,
-								dht: true,
-								tmp: dir
-							});
-							engine.on('ready', function() {
-								if (engine.files.length > 0) {
-									var largestFile = engine.files[0];
-									for (var i = 1; i < engine.files.length; i++) {
-										if (engine.files[i].length > largestFile.length) {
-											largestFile = engine.files[i];
-										}
+					needingResponse[hash][uniqueIdentifier] = res;
+					db.videos.findOne({ hash: hash }, function (err, vidEntry) {
+						if (!err) {
+							if (vidEntry) {
+								//entry already exists so try to fulfill the request straightaway
+								trySendPlayListFile(hash, uniqueIdentifier);
+							} else {
+								//first time this has been requested
+								db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), ratio: 0 }, function (err, newDoc) {
+									if (!err) {
+										console.log("Initializing torrent request");
+										var engine = torrentStream(magnet, {
+											verify: true,
+											dht: true,
+											tmp: __dirname
+										});
+										engine.on('ready', function() {
+											if (engine.files.length > 0) {
+												var largestFile = engine.files[0];
+												for (var i = 1; i < engine.files.length; i++) {
+													if (engine.files[i].length > largestFile.length) {
+														largestFile = engine.files[i];
+													}
+												}
+												console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+												transcode(largestFile.createReadStream(), hash);
+											}
+										});
+									} else {
+										console.log("Could not insert initial video record");
 									}
-									console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-									transcode(largestFile.createReadStream(), hash, res);
-								}
-							});
+								});
+							}
 						}
 					});
 				}
@@ -325,10 +439,52 @@ var encrypt = function(username, sessionNumber, text, disregardVerification) {
 	}
 };
 
+var lookupByMagnet = function(magnet, callback) {
+	getMagnet(magnet, function(err, magnet) {
+		if (!err) {
+			var hash = getHash(magnet);
+			db.videos.findOne({ hash: hash }, function(err, vidEntry) {
+				if (!err) {
+					callback(vidEntry);
+				}
+			});
+		}
+	});
+};
+
+var addTorrentStatus = function(list, callback) {
+	var count = 0;
+	for (var i = 0; i < list.length; i++) {
+		processStatus(list[i], function() {
+			count++;
+			if (count == list.length) {
+				callback();
+			}
+		});
+	}
+};
+
+var processStatus = function(entry, callback) {
+	lookupByMagnet(entry.download, function(vidEntry) {
+		if (vidEntry) {
+			if (vidEntry.terminated) {
+				entry.status = "terminated";
+			} else if (!vidEntry.torrenting) {
+				entry.status = "done";
+			} else if (vidEntry.ratio > 1.1) {
+				entry.status = "good";
+			} else {
+				entry.status = "bad";
+			}
+		}
+		callback();
+	});	
+};
+
 var fetchTorrentList = function(query, socket) {
 	request(torrentAPI + "get_token=get_token", function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;4;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
+			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
 			//console.log(torURL);
 			request(torURL, function (error, response, body) {
 				if (!error && response.statusCode == 200) {
@@ -336,18 +492,20 @@ var fetchTorrentList = function(query, socket) {
 					var final = [];
 					if (results) {
 						for (var i = 0; i < results.length; i++) {
-							//if (results[i].category.indexOf("1080") >= 0 || results[i].category.indexOf("720") >= 0) {
-								final.push({title: results[i].title, download: results[i].download});
-							//}
+							final.push({title: results[i].title, download: results[i].download});
 						}
 					} else {
 						if (JSON.parse(body).error_code && JSON.parse(body).error_code !== 20) {
 							console.log(body);
 						}
 					}
-					socket.emit('listtorrent', final);
+					addTorrentStatus(final, function() {
+						socket.emit('listtorrent', final);
+					});
 				}
 			});
+		} else {
+			console.log("Torrent search error: " + error);
 		}
 	});
 };
@@ -423,4 +581,5 @@ io.on('connection', function (socket) {
 
 http.listen(80, "0.0.0.0", function (){
 	console.log('listening on *:80');
+	cleanup();
 });

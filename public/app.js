@@ -58,8 +58,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			$rootScope.playingVideo = videoFile;
 			/*global btoa*/
-			var magnet = btoa(EncryptService.encrypt($rootScope.playingVideo));
-			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + magnet + "/" + magnet + ".m3u8");
+			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt($rootScope.playingVideo)) + "/stream.m3u8");
 		}
 	};
 

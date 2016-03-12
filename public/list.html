@@ -15,7 +15,7 @@
 					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="playTorrent(torrent.title, torrent.download)">
 						<span class="glyphicon glyphicon-play-circle"></span>
 					</button>
-					<span ng-bind="torrent.title"></span>
+					<span ng-bind="torrent.title" ng-class="[{done: (torrent.status == 'done')}, {terminated: (torrent.status == 'terminated')}, {bad: (torrent.status == 'bad')}, {good: (torrent.status == 'good')}]"></span>
 				</li>
 			</ul>
 		</div>

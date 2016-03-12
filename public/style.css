@@ -46,51 +46,11 @@ html, body {
 	width: 100%;
 }
 
-.uploading {
-  background-color: blue;
-}
-
-.processing {
-  background-color: green;
-}
-
-.activevideo {
-  font-weight: bold;
-}
-
-.newvideo {
-  color: green;
-}
-
 .ellipsis {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     -o-text-overflow: ellipsis;
-}
-
-.btn-file {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-file input[type=file] {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 100%;
-  min-height: 100%;
-  font-size: 100px;
-  text-align: right;
-  filter: alpha(opacity=0);
-  opacity: 0;
-  background: red;
-  cursor: inherit;
-  display: block;
-}
-input[readonly] {
-  background-color: white !important;
-  cursor: text !important;
 }
 
 .flowplayer {
@@ -160,4 +120,21 @@ a:active {
   -webkit-align-items: center;
   align-items: center;
   margin: 0;
+}
+
+.good {
+  color: green;
+}
+
+.bad {
+  color: red;
+}
+
+.terminated {
+  text-decoration: line-through;
+}
+
+.done {
+  color: green;
+  font-weight: bold;
 }
