@@ -45,6 +45,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		api.on("ready", function () {
 			api.seek(0, function() {});
 		});
+		api.on("beforeseek", function(a, b, c) {
+			console.log(c);
+		});
 	});
 
 	$rootScope.setTitle = function(title) {
