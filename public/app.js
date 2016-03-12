@@ -82,7 +82,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.magnet) {
 			$('<div/>', { id: 'flow' }).appendTo('.player');
-			var api = $("#flow").flowplayer({
+			$("#flow").flowplayer({
 				fullscreen: true,
 				native_fullscreen: true,
 				autoPlay: true,
@@ -128,6 +128,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$localStorage.$reset({
 				username: $rootScope.$storage.username
 			});
+			$rootScope.activeVideo = undefined;
 			EncryptService.reset();
 			$rootScope.search.text = '';
 			$rootScope.staleQuery = '';
@@ -144,6 +145,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if (newValue && !oldValue) {
 				$rootScope.verify();
 			} else if (oldValue && !newValue) {
+				$rootScope.activeVideo = undefined
 				EncryptService.reset();
 				$rootScope.search.text = '';
 				$rootScope.staleQuery = '';
@@ -160,6 +162,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		if ($rootScope.$storage.username == msg.username && $rootScope.$storage.sessionNumber == msg.session) {
 			$rootScope.search.text = '';
 			$rootScope.staleQuery = '';
+			$rootScope.activeVideo = undefined;
 			$localStorage.$reset();
 			EncryptService.reset();
 			$state.go('auth');
