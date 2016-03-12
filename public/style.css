@@ -126,6 +126,10 @@ a:active {
   color: green;
 }
 
+.borderline {
+  color: yellow;
+}
+
 .bad {
   color: red;
 }

@@ -75,14 +75,16 @@ var getDirs = function (dir) {
 };
 
 var cleanup = function() {
+	deleteFolderRecursive(__dirname + "/torrent-stream");
 	var dirs = getDirs(dir);
 	for (var i = 0; i < dirs.length; i++) {
 		checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1]);
 	}
+	//if there's an entry in the database that shows the video as not terminated but there's no folder for it
 	db.videos.find({ }, function(err, videos) {
 		if (!err) {
 			for (var i = 0; i < videos.length; i++) {
-				if (videos[i].hash) {
+				if (videos[i].hash && !videos[i].terminated) {
 					try {
 						fs.statSync(dir + videos[i].hash);
 					} catch (e) {
@@ -112,6 +114,8 @@ var deleteFolderRecursive = function(path) {
 	}
 };
 
+//if there's a folder for a video but it's not in the database
+//if there's a folder for a video and it's in the database, but it never completed and was not terminated
 var checkRemove = function(hash) {
 	db.videos.find({ hash: hash }, function(err, videos) {
 		if (!err && videos.length == 0) {
@@ -130,30 +134,49 @@ var checkRemove = function(hash) {
 
 var transcode = function (stream, hash) {
 	var lastUpdate;
+	var totalDuration;
 	fs.mkdir(dir + hash, function(err) {
 	    if (err && err.code !== 'EEXIST') {
 	    	console.log("Transcode: error creating video folder");
 	    } else {
-			var command = ffmpeg(stream)
-				.videoCodec('libx264')
-				.audioCodec('libmp3lame')
-				.size('?x720')
-				.fps(30)
-				.audioChannels(2)
+	    	var baseCommand = ffmpeg(stream)
+	    		.videoCodec('libx264')
+				.videoBitrate('1024k')
+	    		.audioCodec('libmp3lame')
+	    		.audioBitrate('128k')
+	    		.size('?x720')
+	    		.fps(30)
+	    		.audioChannels(2)
+	    		.outputOption('-analyzeduration 2147483647')
+				.outputOption('-probesize 2147483647')
+				.outputOption('-pix_fmt yuv420p');
+	    	
+	    	var testFile = dir + hash + "/test.mp4";
+	    	var probeCommand = baseCommand.clone()
+				.format('mp4')
+				.duration("0.001")
+				.on('end', function(stdout, stderr) {
+					fs.unlinkSync(testFile);
+	    			totalDuration = convertToSeconds(stderr.split("Duration: ")[1].split(",")[0]);
+	    		})
+	    		.save(testFile);
+	    		
+			var command = baseCommand.clone()
 				.addOptions([
 					'-sn',
 					'-async 1',
-					'-b:a 128k',
 					'-ar 44100',
-					'-b:v 1024k',
 					'-pix_fmt yuv420p',
 					'-profile:v baseline',
 					'-preset:v superfast',
 					'-x264opts level=3.0',
 					'-threads 0',
 					'-flags +global_header',
+					//'-map 0',
 					'-map 0:v:0',
 					'-map 0:a:0',
+					'-analyzeduration 2147483647',
+					'-probesize 2147483647',
 					'-f segment',
 					'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
 					'-segment_time 10',
@@ -177,17 +200,21 @@ var transcode = function (stream, hash) {
 						lastUpdate = Date.now();
 						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
 							if (!err && vidEntry != null) {
-								var seconds = convertToSeconds(progress.timemark);
-								var ratio = seconds / ((now - vidEntry.timeStarted) / 1000);
-								db.videos.update({ hash: hash }, { $set: { ratio: ratio } }, {}, function (err) {
-									if (!err) {
-										if (ratio < 1) {
-											//console.log("Transcode: video " + hash + " has a ratio of: " + ratio + " at " + seconds + " seconds");
+								var secondsOfMovieProcessed = convertToSeconds(progress.timemark);
+								var secondsOfTimeSpentProcessing = ((now - vidEntry.timeStarted) / 1000);
+								if (totalDuration) {
+									//console.log("Processed " + seconds + " of " + duration);
+									var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
+									db.videos.update({ hash: hash }, { $set: { ratio: ratio } }, {}, function (err) {
+										if (!err) {
+											if (ratio > 1) {
+												//console.log("Transcode: video " + hash + " has a ratio of: " + ratio + " at " + seconds + " seconds");
+											}
+										} else {
+											console.log("Transcode: could not update video ratio");
 										}
-									} else {
-										console.log("Transcode: could not update video ratio");
-									}
-								});
+									});
+								}
 							}
 						});
 					}
@@ -204,7 +231,8 @@ var transcode = function (stream, hash) {
 				
 			var timeout = setTimeout(function() {
 				console.log("No progress has been made; killing the process.");
-				command.kill();
+				if (command) { command.kill(); }
+				if (probeCommand) { probeCommand.kill(); }
 				deleteFolderRecursive(dir + hash);
 				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } }, {}, function (err) {
 					if (err) {
@@ -332,34 +360,21 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 					db.videos.findOne({ hash: hash }, function (err, vidEntry) {
 						if (!err) {
 							if (vidEntry) {
-								//entry already exists so try to fulfill the request straightaway
-								trySendPlayListFile(hash, uniqueIdentifier);
+								if (vidEntry.terminated) {
+									db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
+										if (!err && numRemoved == 1) {
+											startTorrent(hash, magnet);
+										} else {
+											console.log("Could not remove terminated entry");
+										}
+									});
+								} else {
+									//entry already exists so try to fulfill the request straightaway
+									trySendPlayListFile(hash, uniqueIdentifier);
+								}
 							} else {
 								//first time this has been requested
-								db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), ratio: 0 }, function (err, newDoc) {
-									if (!err) {
-										console.log("Initializing torrent request");
-										var engine = torrentStream(magnet, {
-											verify: true,
-											dht: true,
-											tmp: __dirname
-										});
-										engine.on('ready', function() {
-											if (engine.files.length > 0) {
-												var largestFile = engine.files[0];
-												for (var i = 1; i < engine.files.length; i++) {
-													if (engine.files[i].length > largestFile.length) {
-														largestFile = engine.files[i];
-													}
-												}
-												console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-												transcode(largestFile.createReadStream(), hash);
-											}
-										});
-									} else {
-										console.log("Could not insert initial video record");
-									}
-								});
+								startTorrent(hash, magnet);
 							}
 						}
 					});
@@ -370,6 +385,33 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 		}
 	}
 });
+
+var startTorrent = function(hash, magnet) {
+	db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), ratio: 1 }, function (err, newDoc) {
+		if (!err) {
+			console.log("Initializing torrent request");
+			var engine = torrentStream(magnet, {
+				verify: true,
+				dht: true,
+				tmp: __dirname
+			});
+			engine.on('ready', function() {
+				if (engine.files.length > 0) {
+					var largestFile = engine.files[0];
+					for (var i = 1; i < engine.files.length; i++) {
+						if (engine.files[i].length > largestFile.length) {
+							largestFile = engine.files[i];
+						}
+					}
+					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+					transcode(largestFile.createReadStream(), hash);
+				}
+			});
+		} else {
+			console.log("Could not insert initial video record");
+		}
+	});
+};
 
 var createSRPResponse = function (socket, user) {
 	var srpServer = new jsrp.server();
@@ -474,8 +516,10 @@ var processStatus = function(entry, callback) {
 				entry.status = "terminated";
 			} else if (!vidEntry.torrenting) {
 				entry.status = "done";
-			} else if (vidEntry.ratio > 1.1) {
+			} else if (vidEntry.ratio < 0.9) {
 				entry.status = "good";
+			} else if (vidEntry.ratio < 1.0) {
+				entry.status = "borderline";
 			} else {
 				entry.status = "bad";
 			}
@@ -483,6 +527,8 @@ var processStatus = function(entry, callback) {
 		callback();
 	});	
 };
+
+//https://rarbg.to/torrents.php?category=18;41&search=better+call+saul&order=seeders&by=DESC
 
 var fetchTorrentList = function(query, socket) {
 	request(torrentAPI + "get_token=get_token", function (error, response, body) {
