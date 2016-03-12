@@ -56,7 +56,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	$rootScope.pasteTorrent = function() {
 		var magnet = prompt("Please paste a torrent or magnet link to stream");
-		$rootScope.playTorrent(magnet.split("&dn=")[1].split("&")[0], magnet);
+		$rootScope.playTorrent(decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), magnet);
 	};
 	
 	$rootScope.playTorrent = function(title, magnet) {
