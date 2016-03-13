@@ -27,7 +27,7 @@ var SEQUENCE_SEPARATOR = "_";
 var NO_PROGRESS_TIMEOUT = 120; //seconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
 var DAYS_RETENTION_PERIOD = 5; //days
-var INITIAL_REMAINING_ESTIMATE = 86399; //seconds
+var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
