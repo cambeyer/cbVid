@@ -40,6 +40,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
 	
+	$rootScope.videoTime;
+	
 	$rootScope.flowAPI;
 	
 	/*global flowplayer*/
@@ -48,8 +50,15 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI.on("ready", function () {
 			$rootScope.flowAPI.seek(0, function() {});
 		});
-		$rootScope.flowAPI.on("beforeseek", function(a, b, c) {
-			console.log(c);
+		$rootScope.flowAPI.on("seek", function() {
+			$rootScope.videoTime = arguments[2];
+		});
+		$rootScope.flowAPI.on("progress", function() {
+			if (arguments[2] - $rootScope.videoTime > 5) {
+				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
+			} else {
+				$rootScope.videoTime = arguments[2];
+			}
 		});
 	});
 
@@ -88,7 +97,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$("#flow").flowplayer({
 				fullscreen: true,
 				native_fullscreen: true,
-				autoPlay: true,
+				debug: false,
 			    clip: {
 			    	sources: [
 			              {
