@@ -617,8 +617,10 @@ io.on('connection', function (socket) {
 	});
 	socket.on('listtorrent', function(torReq) {
 		if (decrypt(torReq.username, torReq.session, torReq.encryptedPhrase) == "listtorrent") {
-			console.log("Searching torrents for query: " + torReq.query);
-			fetchTorrentList(torReq.query, socket);
+			if (torReq.query) {
+				console.log("Searching torrents for query: " + torReq.query);
+				fetchTorrentList(torReq.query, socket);
+			}
 		} else {
 			socket.emit('verifyok', 'false');
 		}
