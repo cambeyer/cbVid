@@ -27,6 +27,7 @@ var SEQUENCE_SEPARATOR = "_";
 var NO_PROGRESS_TIMEOUT = 120; //seconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
 var DAYS_RETENTION_PERIOD = 5; //days
+var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
 
 //set the directory where files are served from and uploaded to
 var dir = __dirname + '/files/';
@@ -125,7 +126,7 @@ var checkRemove = function(hash) {
 			} catch (e) { }
 		} else if (videos.length == 1) {
 			if (videos[0].torrenting || (!videos[0].terminated && (Date.now() - videos[0].timeStarted)/1000/60/60/24 > DAYS_RETENTION_PERIOD)) {
-				console.log("Removing " + dir + hash + " becuase it was not finished or is too old");
+				console.log("Removing " + dir + hash + " because it was not finished or is too old");
 				deleteFolderRecursive(dir + hash);
 			}
 		}
@@ -191,6 +192,12 @@ var transcode = function (stream, hash, engine) {
 						db.videos.update({ hash: hash }, { $set: { torrenting: false } }, {}, function (err) {
 							if (err) {
 								console.log("Could not update video to terminated status");
+							} else {
+								var statusUpdate = {};
+								statusUpdate.hash = hash;
+								statusUpdate.torrenting = false;
+								statusUpdate.terminated = false;
+								io.emit('status', statusUpdate);
 							}
 						});	
 					});
@@ -206,12 +213,16 @@ var transcode = function (stream, hash, engine) {
 								var secondsOfTimeSpentProcessing = ((now - vidEntry.timeStarted) / 1000);
 								if (totalDuration) {
 									//console.log("Processed " + seconds + " of " + duration);
-									var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
-									db.videos.update({ hash: hash }, { $set: { ratio: ratio } }, {}, function (err) {
+									var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
+									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
+									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, {}, function (err) {
 										if (!err) {
-											if (ratio > 1) {
-												//console.log("Transcode: video " + hash + " has a ratio of: " + ratio + " at " + seconds + " seconds");
-											}
+											var statusUpdate = {};
+											statusUpdate.hash = hash;
+											statusUpdate.remaining = remaining;
+											statusUpdate.torrenting = true;
+											statusUpdate.terminated = false;
+											io.emit('status', statusUpdate);
 										} else {
 											console.log("Transcode: could not update video ratio");
 										}
@@ -239,6 +250,12 @@ var transcode = function (stream, hash, engine) {
 				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } }, {}, function (err) {
 					if (err) {
 						console.log("Could not update video to terminated status");
+					} else {
+						var statusUpdate = {};
+						statusUpdate.hash = hash;
+						statusUpdate.torrenting = false;
+						statusUpdate.terminated = true;
+						io.emit('status', statusUpdate);
 					}
 				});
 				for (var uniqueIdentifier in needingResponse[hash]) {
@@ -389,8 +406,9 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 });
 
 var startTorrent = function(hash, magnet) {
-	db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), ratio: 1 }, function (err, newDoc) {
+	db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
+			io.emit('status', newDoc);
 			console.log("Initializing torrent request");
 			var engine = torrentStream(magnet, {
 				verify: true,
@@ -514,17 +532,9 @@ var addTorrentStatus = function(list, callback) {
 var processStatus = function(entry, callback) {
 	lookupByMagnet(entry.download, function(vidEntry) {
 		if (vidEntry) {
-			if (vidEntry.terminated) {
-				entry.status = "terminated";
-			} else if (!vidEntry.torrenting) {
-				entry.status = "done";
-			} else if (vidEntry.ratio < 0.9) {
-				entry.status = "good";
-			} else if (vidEntry.ratio < 1.0) {
-				entry.status = "borderline";
-			} else {
-				entry.status = "bad";
-			}
+			entry.terminated = vidEntry.terminated;
+			entry.torrenting = vidEntry.torrenting;
+			entry.remaining = vidEntry.remaining;
 		}
 		callback();
 	});	
@@ -543,7 +553,7 @@ var fetchTorrentList = function(query, socket) {
 					var final = [];
 					if (results) {
 						for (var i = 0; i < results.length; i++) {
-							final.push({title: results[i].title, download: results[i].download});
+							final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
 						}
 					} else {
 						if (JSON.parse(body).error_code && JSON.parse(body).error_code !== 20) {

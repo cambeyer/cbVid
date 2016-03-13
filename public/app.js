@@ -145,7 +145,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			if (newValue && !oldValue) {
 				$rootScope.verify();
 			} else if (oldValue && !newValue) {
-				$rootScope.activeVideo = undefined
+				$rootScope.activeVideo = undefined;
 				EncryptService.reset();
 				$rootScope.search.text = '';
 				$rootScope.staleQuery = '';
@@ -172,6 +172,18 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('listtorrent', function (torrentList) {
 		$rootScope.$apply(function() {
 			$rootScope.torrentList = torrentList;
+		});
+	});
+	
+	$rootScope.socket.on('status', function(statusUpdate) {
+		$rootScope.$apply(function() {
+			for (var i = 0; i < $rootScope.torrentList.length; i++) {
+				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {
+					for (var prop in statusUpdate) {
+						$rootScope.torrentList[i][prop] = statusUpdate[prop];
+					}
+				}
+			}
 		});
 	});
 
@@ -335,6 +347,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		return loginObj;
 	};
 })
+
+.filter('secondsToDateTime', [function() {
+    return function(seconds) {
+        return new Date(1970, 0, 1).setSeconds(seconds);
+    };
+}])
 
 .filter('isEmpty', function () {
 	return function (obj) {
