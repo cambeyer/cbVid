@@ -185,6 +185,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					for (var prop in statusUpdate) {
 						$rootScope.torrentList[i][prop] = statusUpdate[prop];
 					}
+					if (statusUpdate.terminated) {
+						delete $rootScope.torrentList[i].remaining;
+					}
 					if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash && statusUpdate.remaining) {
 						var extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
 						$rootScope.torrentList[i].remaining += extraTime;

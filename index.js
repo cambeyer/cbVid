@@ -160,6 +160,10 @@ var transcode = function (stream, hash, engine) {
 					fs.unlinkSync(testFile);
 	    			totalDuration = convertToSeconds(stderr.split("Duration: ")[1].split(",")[0]);
 	    		})
+	    		.on('error', function (err, stdout, stderr) {
+					console.log("Probe transcoding issue: " + err);
+					console.log(stderr);
+				})
 	    		.save(testFile);
 	    		
 			var command = baseCommand.clone()
@@ -189,15 +193,11 @@ var transcode = function (stream, hash, engine) {
 				})
 				.on('end', function() {
 					engine.remove(false, function() {
-						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 }}, {}, function (err) {
+						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 							if (err) {
 								console.log("Could not update video to terminated status");
 							} else {
-								var statusUpdate = {};
-								statusUpdate.hash = hash;
-								statusUpdate.torrenting = false;
-								statusUpdate.terminated = false;
-								io.emit('status', statusUpdate);
+								io.emit('status', updatedDocs[0]);
 							}
 						});	
 					});
@@ -215,14 +215,9 @@ var transcode = function (stream, hash, engine) {
 									//console.log("Processed " + seconds + " of " + duration);
 									var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
 									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
-									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, {}, function (err) {
+									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 										if (!err) {
-											var statusUpdate = {};
-											statusUpdate.hash = hash;
-											statusUpdate.remaining = remaining;
-											statusUpdate.torrenting = true;
-											statusUpdate.terminated = false;
-											io.emit('status', statusUpdate);
+											io.emit('status', updatedDocs[0]);
 										} else {
 											console.log("Transcode: could not update video ratio");
 										}
@@ -238,7 +233,8 @@ var transcode = function (stream, hash, engine) {
 					}
 				})
 				.on('error', function (err, stdout, stderr) {
-					console.log("Transcoding issue: " + stderr);
+					console.log("Transcoding issue: " + err);
+					console.log(stderr);
 				})
 				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				
@@ -246,23 +242,21 @@ var transcode = function (stream, hash, engine) {
 				console.log("No progress has been made; killing the process.");
 				if (command) { command.kill(); }
 				if (probeCommand) { probeCommand.kill(); }
-				deleteFolderRecursive(dir + hash);
-				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } , $unset: { remaining: 1 }}, {}, function (err) {
-					if (err) {
-						console.log("Could not update video to terminated status");
-					} else {
-						var statusUpdate = {};
-						statusUpdate.hash = hash;
-						statusUpdate.torrenting = false;
-						statusUpdate.terminated = true;
-						io.emit('status', statusUpdate);
+				engine.remove(false, function() {
+					deleteFolderRecursive(dir + hash);
+					db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
+						if (err) {
+							console.log("Could not update video to terminated status");
+						} else {
+							io.emit('status', updatedDocs[0]);
+						}
+					});
+					for (var uniqueIdentifier in needingResponse[hash]) {
+						needingResponse[hash][uniqueIdentifier].end();
+						delete needingResponse[hash][uniqueIdentifier];
 					}
+					delete needingResponse[hash];
 				});
-				for (var uniqueIdentifier in needingResponse[hash]) {
-					needingResponse[hash][uniqueIdentifier].end();
-					delete needingResponse[hash][uniqueIdentifier];
-				}
-				delete needingResponse[hash];
 			}, NO_PROGRESS_TIMEOUT * 1000);
 	    }
 	});
@@ -508,7 +502,7 @@ var lookupByMagnet = function(magnet, callback) {
 	getMagnet(magnet, function(err, magnet) {
 		if (!err) {
 			var hash = getHash(magnet);
-			db.videos.findOne({ hash: hash }, function(err, vidEntry) {
+			db.videos.findOne({ hash: hash }, { timeStarted: 0, _id: 0 }, function(err, vidEntry) {
 				if (!err) {
 					callback(vidEntry);
 				}
@@ -532,9 +526,11 @@ var addTorrentStatus = function(list, callback) {
 var processStatus = function(entry, callback) {
 	lookupByMagnet(entry.magnet, function(vidEntry) {
 		if (vidEntry) {
-			entry.terminated = vidEntry.terminated;
-			entry.torrenting = vidEntry.torrenting;
-			entry.remaining = vidEntry.remaining;
+			var title = String(entry.title);
+			var magnet = String(entry.magnet);
+			entry = vidEntry;
+			entry.title = title;
+			entry.magnet = magnet;
 		}
 		callback();
 	});	
