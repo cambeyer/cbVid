@@ -183,7 +183,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
 				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {
 					for (var prop in statusUpdate) {
-						$rootScope.torrentList[i][prop] = statusUpdate[prop];
+						if (prop != "_id" && prop != "timeStarted") {
+							$rootScope.torrentList[i][prop] = statusUpdate[prop];
+						}
 					}
 					if (statusUpdate.terminated) {
 						delete $rootScope.torrentList[i].remaining;
