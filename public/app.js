@@ -138,6 +138,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$state.reload();
 		} else {
 			if ($state.current.name == 'auth') {
+				if ($rootScope.activeVideo) {
+					$rootScope.setTitle($rootScope.activeVideo.title);
+				} else {
+					$rootScope.setTitle("Welcome");
+				}
 				$state.go('cbvid.list');
 			}
 		}
@@ -320,6 +325,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .controller('containerController', function($scope, $rootScope, $modal, $state, $timeout, EncryptService, UserObj) {
 	var timer;
+	
+	$rootScope.verify();
 
 	$scope.searchtor = function() {
 		$timeout.cancel(timer);
