@@ -15,7 +15,7 @@
 					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="playTorrent(torrent.title, torrent.magnet)">
 						<span class="glyphicon glyphicon-play-circle"></span>
 					</button>
-					<span ng-bind="torrent.title" ng-class="[{done: (torrent.torrenting && !torrent.terminated)}, {terminated: (torrent.terminated)}, {bad: (torrent.remaining > 30)}, {borderline: (torrent.remaining < 30 && torrent.remaining > 0)}, {good: (torrent.remaining <= 0)}]"></span><span ng-if="torrent.remaining > 0"> ({{torrent.remaining | secondsToDateTime | date:'HH:mm:ss'}} remaining)</span>
+					<span ng-bind="torrent.title" ng-class="[{done: (torrent.torrenting == false && !torrent.terminated)}, {terminated: (torrent.terminated)}, {bad: (torrent.remaining > 30)}, {borderline: (torrent.remaining < 30 && torrent.remaining > 0)}, {good: (torrent.remaining <= 0)}]"></span><span ng-if="torrent.remaining > 0"> ({{torrent.remaining | secondsToDateTime | date:'HH:mm:ss'}} remaining)</span>
 				</li>
 			</ul>
 		</div>

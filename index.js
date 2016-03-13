@@ -189,7 +189,7 @@ var transcode = function (stream, hash, engine) {
 				})
 				.on('end', function() {
 					engine.remove(false, function() {
-						db.videos.update({ hash: hash }, { $set: { torrenting: false } }, {}, function (err) {
+						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 }}, {}, function (err) {
 							if (err) {
 								console.log("Could not update video to terminated status");
 							} else {
@@ -247,7 +247,7 @@ var transcode = function (stream, hash, engine) {
 				if (command) { command.kill(); }
 				if (probeCommand) { probeCommand.kill(); }
 				deleteFolderRecursive(dir + hash);
-				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } }, {}, function (err) {
+				db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false } , $unset: { remaining: 1 }}, {}, function (err) {
 					if (err) {
 						console.log("Could not update video to terminated status");
 					} else {
@@ -530,7 +530,7 @@ var addTorrentStatus = function(list, callback) {
 };
 
 var processStatus = function(entry, callback) {
-	lookupByMagnet(entry.download, function(vidEntry) {
+	lookupByMagnet(entry.magnet, function(vidEntry) {
 		if (vidEntry) {
 			entry.terminated = vidEntry.terminated;
 			entry.torrenting = vidEntry.torrenting;
