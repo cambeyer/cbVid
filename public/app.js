@@ -40,12 +40,15 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
 	
+	$rootScope.flowAPI;
+	
 	/*global flowplayer*/
 	flowplayer(function (api, root) {
-		api.on("ready", function () {
-			api.seek(0, function() {});
+		$rootScope.flowAPI = api;
+		$rootScope.flowAPI.on("ready", function () {
+			$rootScope.flowAPI.seek(0, function() {});
 		});
-		api.on("beforeseek", function(a, b, c) {
+		$rootScope.flowAPI.on("beforeseek", function(a, b, c) {
 			console.log(c);
 		});
 	});
@@ -59,8 +62,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.playTorrent(decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), magnet);
 	};
 	
-	$rootScope.playTorrent = function(title, magnet) {
-		$rootScope.activeVideo = {title: title, magnet: magnet};
+	$rootScope.playTorrent = function(title, magnet, hash) {
+		$rootScope.activeVideo = {title: title, magnet: magnet, hash: hash};
 		$rootScope.setTitle(title);
 		$rootScope.setVideo();
 	};
@@ -181,6 +184,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {
 					for (var prop in statusUpdate) {
 						$rootScope.torrentList[i][prop] = statusUpdate[prop];
+					}
+					if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash && statusUpdate.remaining) {
+						var extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
+						$rootScope.torrentList[i].remaining += extraTime;
 					}
 				}
 			}
