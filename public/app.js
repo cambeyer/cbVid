@@ -56,7 +56,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI.on("progress", function() {
 			if (arguments[2] - $rootScope.videoTime > 5) {
 				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
-			} else {
+			} else if (Math.abs(arguments[2] - $rootScope.videoTime) < 5) {
 				$rootScope.videoTime = arguments[2];
 			}
 		});
@@ -94,6 +94,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.magnet) {
 			$('<div/>', { id: 'flow' }).appendTo('.player');
+			$rootScope.videoTime = 0;
 			$("#flow").flowplayer({
 				fullscreen: true,
 				native_fullscreen: true,
