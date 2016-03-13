@@ -390,4 +390,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 		return true;
 	};
+})
+
+.filter('greenVideo', function () {
+	return function (torrent) {
+		if (torrent.torrenting == false && !torrent.terminated) {
+			return true;
+		} else if (torrent.remaining <= 0 && !torrent.terminated) {
+			return true;
+		} else {
+			return false;
+		}
+	};
 });
