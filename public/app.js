@@ -62,9 +62,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.playTorrent(decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), magnet);
 	};
 	
-	$rootScope.playTorrent = function(title, magnet, hash) {
-		$rootScope.activeVideo = {title: title, magnet: magnet, hash: hash};
-		$rootScope.setTitle(title);
+	$rootScope.playTorrent = function(torrent) {
+		$rootScope.activeVideo = torrent;
+		$rootScope.setTitle(torrent.title);
 		$rootScope.setVideo();
 	};
 	
