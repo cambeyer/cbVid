@@ -138,11 +138,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$state.reload();
 		} else {
 			if ($state.current.name == 'auth') {
-				if ($rootScope.activeVideo) {
-					$rootScope.setTitle($rootScope.activeVideo.title);
-				} else {
-					$rootScope.setTitle("Welcome");
-				}
 				$state.go('cbvid.list');
 			}
 		}
@@ -185,6 +180,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	$rootScope.socket.on('status', function(statusUpdate) {
 		$rootScope.$apply(function() {
+			var extraTime = 0;
+			if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash) {
+				if (statusUpdate.remaining) {
+					extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
+				} else if (statusUpdate.terminated) {
+					alert("Sorry! Looks like we aren't able to stream that video.");
+				}
+			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
 				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {
 					for (var prop in statusUpdate) {
@@ -192,11 +195,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 							$rootScope.torrentList[i][prop] = statusUpdate[prop];
 						}
 					}
-					if (statusUpdate.terminated) {
+					if ($rootScope.torrentList[i].remaining && !statusUpdate.remaining) {
 						delete $rootScope.torrentList[i].remaining;
 					}
-					if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash && statusUpdate.remaining) {
-						var extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
+					if (extraTime) {
 						$rootScope.torrentList[i].remaining += extraTime;
 					}
 				}
@@ -327,6 +329,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	var timer;
 	
 	$rootScope.verify();
+	
+	if ($rootScope.activeVideo) {
+		$rootScope.setTitle($rootScope.activeVideo.title);
+	} else {
+		$rootScope.setTitle("Welcome");
+	}
 
 	$scope.searchtor = function() {
 		$timeout.cancel(timer);
