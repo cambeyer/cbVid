@@ -50,7 +50,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI.on("ready", function () {
 			$rootScope.flowAPI.seek(0, function() {});
 		});
-		$rootScope.flowAPI.on("seek", function() {
+		$rootScope.flowAPI.on("beforeseek", function() {
 			$rootScope.videoTime = arguments[2];
 		});
 		$rootScope.flowAPI.on("progress", function() {
@@ -111,10 +111,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('.fp-engine').attr('preload', 'auto');
 			$('.fp-embed').remove();
 			$('.fp-brand').remove();
-			$('.fp-duration').remove();
-			$('.fp-remaining').remove();
-			//$('.fp-time').remove();
-			$('.fp-timeline').remove();
+			if ($rootScope.activeVideo.torrenting) {
+				$('.fp-duration').remove();
+				$('.fp-remaining').remove();
+				//$('.fp-time').remove();
+				$('.fp-timeline').remove();
+			}
 			$('a[href*="flowplayer"]').remove();
 			$('.fp-context-menu').addClass('hidden');
 			$('.fp-volume').css('right', '40px');
