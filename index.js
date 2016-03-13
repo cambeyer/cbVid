@@ -514,7 +514,7 @@ var lookupByMagnet = function(magnet, callback) {
 var addTorrentStatus = function(list, callback) {
 	var count = 0;
 	for (var i = 0; i < list.length; i++) {
-		processStatus(list[i], function() {
+		processStatus(list, i, function() {
 			count++;
 			if (count == list.length) {
 				callback();
@@ -523,14 +523,14 @@ var addTorrentStatus = function(list, callback) {
 	}
 };
 
-var processStatus = function(entry, callback) {
-	lookupByMagnet(entry.magnet, function(vidEntry) {
+var processStatus = function(list, pos, callback) {
+	lookupByMagnet(list[pos].magnet, function(vidEntry) {
 		if (vidEntry) {
-			var title = String(entry.title);
-			var magnet = String(entry.magnet);
-			entry = vidEntry;
-			entry.title = title;
-			entry.magnet = magnet;
+			var title = String(list[pos].title);
+			var magnet = String(list[pos].magnet);
+			list[pos] = vidEntry;
+			list[pos].title = title;
+			list[pos].magnet = magnet;
 		}
 		callback();
 	});	
