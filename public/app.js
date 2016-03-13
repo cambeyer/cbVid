@@ -112,7 +112,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('.fp-engine').attr('preload', 'auto');
 			$('.fp-embed').remove();
 			$('.fp-brand').remove();
-			if ($rootScope.activeVideo.torrenting) {
+			if ($rootScope.activeVideo == undefined || $rootScope.activeVideo.torrenting) {
 				$('.fp-duration').remove();
 				$('.fp-remaining').remove();
 				//$('.fp-time').remove();
