@@ -152,7 +152,6 @@ var transcode = function (stream, hash, engine) {
 				.outputOption('-probesize 2147483647')
 				.outputOption('-pix_fmt yuv420p');
 	    	
-	    	var command;
 	    	var testFile = dir + hash + "/test.mp4";
 	    	var probeCommand = baseCommand.clone()
 				.format('mp4')
@@ -161,86 +160,87 @@ var transcode = function (stream, hash, engine) {
 					try {
 						fs.unlinkSync(testFile);
 		    			totalDuration = convertToSeconds(stderr.split("Duration: ")[1].split(",")[0]);
-						command = baseCommand.clone()
-							.addOptions([
-								'-sn',
-								'-async 1',
-								'-ar 44100',
-								'-pix_fmt yuv420p',
-								'-profile:v baseline',
-								'-preset:v superfast',
-								'-x264opts level=3.0',
-								'-threads 0',
-								'-flags +global_header',
-								//'-map 0',
-								'-map 0:v:0',
-								'-map 0:a:0',
-								'-analyzeduration 2147483647',
-								'-probesize 2147483647',
-								'-f segment',
-								'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
-								'-segment_time 10',
-								'-segment_format mpegts',
-								'-segment_list_flags live'
-							])
-							.on('start', function (cmdline) {
-								//console.log(cmdline);
-							})
-							.on('end', function() {
-								engine.remove(false, function() {
-									db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-										if (err) {
-											console.log("Could not update video to terminated status");
-										} else {
-											io.emit('status', updatedDocs[0]);
-										}
-									});	
-								});
-							})
-							.on('progress', function(progress) {
-								clearTimeout(timeout);
-								var now = Date.now();
-								if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
-									lastUpdate = Date.now();
-									db.videos.findOne({ hash: hash }, function (err, vidEntry) {
-										if (!err && vidEntry != null) {
-											var secondsOfMovieProcessed = convertToSeconds(progress.timemark);
-											var secondsOfTimeSpentProcessing = ((now - vidEntry.timeStarted) / 1000);
-											if (totalDuration) {
-												//console.log("Processed " + seconds + " of " + duration);
-												var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
-												//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
-												db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-													if (!err) {
-														io.emit('status', updatedDocs[0]);
-													} else {
-														console.log("Transcode: could not update video ratio");
-													}
-												});
-											}
-										}
-									});
-								}
-								if (needingResponse[hash]) {
-									for (var uniqueIdentifier in needingResponse[hash]) {
-										trySendPlayListFile(hash, uniqueIdentifier);
-									}
-								}
-							})
-							.on('error', function (err, stdout, stderr) {
-								console.log("Transcoding issue: " + err);
-								console.log(stderr);
-							})
-							.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 					} catch (e) {
-						console.log("Could not parse duration from test file");
+						console.log("Error parsing duration from test file");
 					}
-				})
+	    		})
 	    		.on('error', function (err, stdout, stderr) {
 					console.log("Probe transcoding issue: " + err);
 					console.log(stderr);
 				})
 	    		.save(testFile);
+	    	
+	    	var command = baseCommand.clone()
+				.addOptions([
+					'-sn',
+					'-async 1',
+					'-ar 44100',
+					'-pix_fmt yuv420p',
+					'-profile:v baseline',
+					'-preset:v superfast',
+					'-x264opts level=3.0',
+					'-threads 0',
+					'-flags +global_header',
+					//'-map 0',
+					'-map 0:v:0',
+					'-map 0:a:0',
+					'-analyzeduration 2147483647',
+					'-probesize 2147483647',
+					'-f segment',
+					'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
+					'-segment_time 10',
+					'-segment_format mpegts',
+					'-segment_list_flags live'
+				])
+				.on('start', function (cmdline) {
+					//console.log(cmdline);
+				})
+				.on('end', function() {
+					engine.remove(false, function() {
+						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
+							if (err) {
+								console.log("Could not update video to terminated status");
+							} else {
+								io.emit('status', updatedDocs[0]);
+							}
+						});	
+					});
+				})
+				.on('progress', function(progress) {
+					clearTimeout(timeout);
+					var now = Date.now();
+					if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
+						lastUpdate = Date.now();
+						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
+							if (!err && vidEntry != null) {
+								var secondsOfMovieProcessed = convertToSeconds(progress.timemark);
+								var secondsOfTimeSpentProcessing = ((now - vidEntry.timeStarted) / 1000);
+								if (totalDuration) {
+									//console.log("Processed " + seconds + " of " + duration);
+									var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
+									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
+									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
+										if (!err) {
+											io.emit('status', updatedDocs[0]);
+										} else {
+											console.log("Transcode: could not update video ratio");
+										}
+									});
+								}
+							}
+						});
+					}
+					if (needingResponse[hash]) {
+						for (var uniqueIdentifier in needingResponse[hash]) {
+							trySendPlayListFile(hash, uniqueIdentifier);
+						}
+					}
+				})
+				.on('error', function (err, stdout, stderr) {
+					console.log("Transcoding issue: " + err);
+					console.log(stderr);
+				})
+				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				
 			var timeout = setTimeout(function() {
 				console.log("No progress has been made; killing the process.");
