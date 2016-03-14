@@ -413,7 +413,9 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 });
 
 var startTorrent = function(hash, magnet, username) {
-	db.videos.insert({ hash: hash, title: decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), users: [].push(username), torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
+	var users = [];
+	users.push(username);
+	db.videos.insert({ hash: hash, title: decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), users: users, torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
 			io.emit('status', newDoc);
 			console.log("Initializing torrent request");
