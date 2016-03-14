@@ -66,7 +66,15 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.getHash = function(magnet) {
-		return magnet.split("btih:")[1].split("&")[0];
+		var hash;
+		try {
+			hash = magnet.split("btih:")[1].split("&")[0];
+		} catch (e) {}
+		if (!hash) {
+			return magnet;
+		} else {
+			return hash;
+		}
 	};
 	
 	$rootScope.pasteTorrent = function() {
