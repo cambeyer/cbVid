@@ -79,7 +79,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	$rootScope.pasteTorrent = function() {
 		var magnet = prompt("Please paste magnet link to stream");
-		$rootScope.playTorrent({ magnet: magnet, hash: $rootScope.getHash(magnet) });
+		if (magnet) {
+			$rootScope.playTorrent({ magnet: magnet, hash: $rootScope.getHash(magnet) });
+		}
 	};
 	
 	$rootScope.playTorrent = function(torrent) {
@@ -355,8 +357,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 .controller('containerController', function($scope, $rootScope, $modal, $state, $timeout, EncryptService, UserObj) {
 	var timer;
-	
-	$rootScope.verify();
 	
 	if ($rootScope.activeVideo) {
 		$rootScope.setTitle($rootScope.activeVideo.title);

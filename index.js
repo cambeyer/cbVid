@@ -51,7 +51,6 @@ app.use(function (req, res, next) {
 //files in the public directory can be directly queried for via HTTP
 app.use(express.static(path.join(__dirname, 'public')));
 
-var userKeys = {};
 var needingResponse = {};
 
 var db = {};
@@ -333,22 +332,22 @@ function checkPlaylistCount(stream, cb) {
 }
 
 app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
-	var encryptedMagnet = atob(req.params.magnet);
-	var magnet = decrypt(req.params.username, req.params.session, encryptedMagnet);
-	var filename = req.params.filename;
-	var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
-	//var sequenceNumber = parseInt(filename.substring(filename.indexOf(SEQUENCE_SEPARATOR) + SEQUENCE_SEPARATOR.length, filename.length), 10);
-	if (magnet) {
-		try {
-			var file = path.resolve(dir + hash + "/", filename + TS_EXT);
-			send(req, file, {maxAge: '10h'})
-				.on('headers', function(res, path, stat) {
-					res.setHeader('Content-Type', 'video/mp2t');
-				})
-				.on('end', function() {})
-				.pipe(res);
-		} catch (e) {}
-	}
+	decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
+		var filename = req.params.filename;
+		var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
+		//var sequenceNumber = parseInt(filename.substring(filename.indexOf(SEQUENCE_SEPARATOR) + SEQUENCE_SEPARATOR.length, filename.length), 10);
+		if (magnet) {
+			try {
+				var file = path.resolve(dir + hash + "/", filename + TS_EXT);
+				send(req, file, {maxAge: '10h'})
+					.on('headers', function(res, path, stat) {
+						res.setHeader('Content-Type', 'video/mp2t');
+					})
+					.on('end', function() {})
+					.pipe(res);
+			} catch (e) {}
+		}
+	});
 });
 
 var getMagnet = function(source, callback) {
@@ -383,47 +382,48 @@ var getTitle = function(magnet) {
 
 app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 	var encryptedMagnet = atob(req.params.magnet);
-	var magnet = decrypt(req.params.username, req.params.session, encryptedMagnet);
-	var uniqueIdentifier = req.params.username + req.params.session;
-	if (magnet) {
-		try {
-			getMagnet(magnet, function(err, magnet) {
-				if (!err) {
-					var hash = getHash(magnet);
-					if (!needingResponse[hash]) {
-						needingResponse[hash] = {};
-					}
-					needingResponse[hash][uniqueIdentifier] = res;
-					db.videos.findOne({ hash: hash }, function (err, vidEntry) {
-						if (!err) {
-							if (vidEntry) {
-								if (vidEntry.terminated) {
-									db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
-										if (!err && numRemoved == 1) {
-											startTorrent(hash, magnet, req.params.username);
-										} else {
-											console.log("Could not remove terminated entry");
-										}
-									});
-								} else {
-									//entry already exists so try to fulfill the request straightaway
-									db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
-									trySendPlayListFile(hash, uniqueIdentifier);
-								}
-							} else {
-								//first time this has been requested
-								startTorrent(hash, magnet, req.params.username);
-							}
+	decrypt(req.params.username, req.params.session, encryptedMagnet, false, function(magnet) {
+		var uniqueIdentifier = req.params.username + req.params.session;
+		if (magnet) {
+			try {
+				getMagnet(magnet, function(err, magnet) {
+					if (!err) {
+						var hash = getHash(magnet);
+						if (!needingResponse[hash]) {
+							needingResponse[hash] = {};
 						}
-					});
-				} else {
-					console.log("Error getting magnet from input");
-				}
-			});
-		} catch (e) {
-			console.log("Abandoned torrent due to an error");
+						needingResponse[hash][uniqueIdentifier] = res;
+						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
+							if (!err) {
+								if (vidEntry) {
+									if (vidEntry.terminated) {
+										db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
+											if (!err && numRemoved == 1) {
+												startTorrent(hash, magnet, req.params.username);
+											} else {
+												console.log("Could not remove terminated entry");
+											}
+										});
+									} else {
+										//entry already exists so try to fulfill the request straightaway
+										db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
+										trySendPlayListFile(hash, uniqueIdentifier);
+									}
+								} else {
+									//first time this has been requested
+									startTorrent(hash, magnet, req.params.username);
+								}
+							}
+						});
+					} else {
+						console.log("Error getting magnet from input");
+					}
+				});
+			} catch (e) {
+				console.log("Abandoned torrent due to an error");
+			}
 		}
-	}
+	});
 });
 
 var startTorrent = function(hash, magnet, username) {
@@ -460,71 +460,83 @@ var createSRPResponse = function (socket, user) {
 	var srpServer = new jsrp.server();
 	srpServer.init({ salt: user.salt, verifier: user.verifier }, function () {
 		srpServer.setClientPublicKey(user.publicKey);
-		var srpMsg = {};
-		srpMsg.salt = srpServer.getSalt();
-		srpMsg.publicKey = srpServer.getPublicKey();
 		var sessionNumber = Date.now().toString();
-		if (!userKeys[user.username]) {
-			userKeys[user.username] = {keys: []};
-		}
-		var key = {};
-		key.content = srpServer.getSharedKey();
-		key.sessionNumber = sessionNumber;
-		key.verified = false;
-		userKeys[user.username].keys.push(key);
-		srpMsg.encryptedPhrase = encrypt(user.username, sessionNumber, sessionNumber, true);
-		socket.emit('login', srpMsg);
+		db.users.update({ username: user.username }, { $push: { keys: { content: srpServer.getSharedKey(), sessionNumber: sessionNumber, verified: false } } }, {}, function () {
+			encrypt(user.username, sessionNumber, sessionNumber, true, function(encryptedPhrase) {
+				socket.emit('login', { salt: srpServer.getSalt(), publicKey: srpServer.getPublicKey(), encryptedPhrase: encryptedPhrase });
+			});
+		});
 	});
 };
 
-var getKey = function (username, sessionNumber) {
-	var key;
-	if (userKeys[username]) {
-		for (var i = 0; i < userKeys[username].keys.length; i++) {
-			if (userKeys[username].keys[i].sessionNumber < Date.now() - 86400000) { //24 hour timeout
-				userKeys[username].keys.splice(i, 1);
-				i--;
-				continue;
+var getKey = function (username, sessionNumber, callback) {
+	db.users.findOne({ username: username }, function(err, userObj) {
+		if (!err && userObj) {
+			var key;
+			var modified = false;
+			for (var i = 0; i < userObj.keys.length; i++) {
+				if (userObj.keys[i].sessionNumber < Date.now() - 86400000) { //24 hour timeout
+					userObj.keys.splice(i, 1);
+					i--;
+					modified = true;
+					continue;
+				}
+				if (!key && userObj.keys[i].sessionNumber == sessionNumber) {
+					key = userObj.keys[i];
+				}
 			}
-			if (!key && userKeys[username].keys[i].sessionNumber == sessionNumber) {
-				key = userKeys[username].keys[i];
+			if (modified) {
+				db.users.update({ username: username }, { $set: { keys: userObj.keys } }, {}, function(err, numReplaced) {
+					if (!err) {
+						callback(key);
+					}
+				});
+			} else {
+				callback(key);
 			}
+		} else {
+			callback();
 		}
-	}
-	return key;
+	});
 };
 
-var decrypt = function (username, sessionNumber, text, disregardVerification) {
-	var key = getKey(username, sessionNumber);
-	if (key) {
-		try {
-			if (disregardVerification || key.verified) {
-				return CryptoJS.AES.decrypt(text, key.content).toString(CryptoJS.enc.Utf8);
-			}
-		} catch (e) { }
-	}
+var decrypt = function (username, sessionNumber, text, disregardVerification, callback) {
+	getKey(username, sessionNumber, function(key) {
+		if (key) {
+			try {
+				if (disregardVerification || key.verified) {
+					callback(CryptoJS.AES.decrypt(text, key.content).toString(CryptoJS.enc.Utf8));
+				}
+			} catch (e) { }
+		} else {
+			callback();
+		}
+	});
 };
 
 var encryptedPhrases = {};
 
-var encrypt = function(username, sessionNumber, text, disregardVerification) {
-	var key = getKey(username, sessionNumber);
-	if (key) {
-		try {
-			if (disregardVerification || key.verified) {
-				if (!encryptedPhrases[username]) {
-					encryptedPhrases[username] = {};
+var encrypt = function(username, sessionNumber, text, disregardVerification, callback) {
+	getKey(username, sessionNumber, function(key) {
+		if (key) {
+			try {
+				if (disregardVerification || key.verified) {
+					if (!encryptedPhrases[username]) {
+						encryptedPhrases[username] = {};
+					}
+					if (!encryptedPhrases[username][sessionNumber]) {
+						encryptedPhrases[username][sessionNumber] = {};
+					}
+					if (!encryptedPhrases[username][sessionNumber][text]) {
+						encryptedPhrases[username][sessionNumber][text] = CryptoJS.AES.encrypt(text, key.content).toString();
+					}
+					callback(encryptedPhrases[username][sessionNumber][text]);
 				}
-				if (!encryptedPhrases[username][sessionNumber]) {
-					encryptedPhrases[username][sessionNumber] = {};
-				}
-				if (!encryptedPhrases[username][sessionNumber][text]) {
-					encryptedPhrases[username][sessionNumber][text] = CryptoJS.AES.encrypt(text, key.content).toString();
-				}
-				return encryptedPhrases[username][sessionNumber][text];
-			}
-		} catch (e) { }
-	}
+			} catch (e) { }
+		} else {
+			callback();
+		}
+	});
 };
 
 var lookupByMagnet = function(magnet, callback) {
@@ -619,6 +631,7 @@ io.on('connection', function (socket) {
 		userObj.username = newUser.username;
 		userObj.salt = newUser.salt;
 		userObj.verifier = newUser.verifier;
+		userObj.keys = [];
 		db.users.insert(userObj, function (err) {
 			if (!err) {
 				console.log("Registered new user: " + newUser.username);
@@ -644,44 +657,72 @@ io.on('connection', function (socket) {
 		});
 	});
 	socket.on('verify', function (challenge) {
-		if (decrypt(challenge.username, challenge.session, challenge.encryptedPhrase, true) == "client") {
-			console.log("Successfully logged in user: " + challenge.username);
-			getKey(challenge.username, challenge.session).verified = true;
-			socket.emit('verifyok', 'true');
-		} else {
-			console.log("Failed login for user: " + challenge.username);
-			socket.emit('verifyok', 'false');
-		}
+		decrypt(challenge.username, challenge.session, challenge.encryptedPhrase, true, function(encryptedPhrase) {
+			if (encryptedPhrase == "client") {
+				console.log("Successfully logged in user: " + challenge.username);
+				db.users.findOne({ username: challenge.username }, function(err, userObj) {
+					if (!err && userObj) {
+						var modified = false;
+						for (var i = 0; i < userObj.keys.length; i++) {
+							if (userObj.keys[i].sessionNumber == challenge.session && !userObj.keys[i].verified) {
+								userObj.keys[i].verified = true;
+								modified = true;
+								break;
+							}
+						}
+						if (modified) {
+							db.users.update({ username: challenge.username }, { $set: { keys: userObj.keys } }, {}, function() {});
+						}
+						socket.emit('verifyok', 'true');
+					}
+				});
+			} else {
+				console.log("Failed login for user: " + challenge.username);
+				socket.emit('verifyok', 'false');
+			}
+		});
 	});
 	socket.on('listtorrent', function(torReq) {
-		if (decrypt(torReq.username, torReq.session, torReq.encryptedPhrase) == "listtorrent") {
-			if (torReq.query) {
-				console.log("Searching torrents for query: " + torReq.query);
-				fetchTorrentList(torReq.query, socket);
+		decrypt(torReq.username, torReq.session, torReq.encryptedPhrase, false, function(encryptedPhrase) {
+			if (encryptedPhrase == "listtorrent") {
+				if (torReq.query) {
+					console.log("Searching torrents for query: " + torReq.query);
+					fetchTorrentList(torReq.query, socket);
+				}
+			} else {
+				socket.emit('verifyok', 'false');
 			}
-		} else {
-			socket.emit('verifyok', 'false');
-		}
+		});
 	});
 	socket.on('myview', function(viewReq) {
-		if (decrypt(viewReq.username, viewReq.session, viewReq.encryptedPhrase) == "myview") {
-			sendMyView(viewReq.username, socket);	
-		}
+		decrypt(viewReq.username, viewReq.session, viewReq.encryptedPhrase, false, function(encryptedPhrase) {
+			if (encryptedPhrase == "myview") {
+				sendMyView(viewReq.username, socket);
+			}
+		});
 	});
 	socket.on('logout', function (logoutReq) {
-		if (decrypt(logoutReq.username, logoutReq.session, logoutReq.verification, true) == "logout") {
-			for (var i = 0; i < userKeys[logoutReq.username].keys.length; i++) {
-				if (userKeys[logoutReq.username].keys[i].sessionNumber == logoutReq.session) {
-					userKeys[logoutReq.username].keys.splice(i, 1);
-					var resp = {};
-					resp.username = logoutReq.username;
-					resp.session = logoutReq.session;
-					io.emit('logout', resp);
-					console.log("Successfully logged out user: " + logoutReq.username);
-					break;
-				}
+		decrypt(logoutReq.username, logoutReq.session, logoutReq.verification, true, function(encryptedPhrase) {
+			if (encryptedPhrase == "logout") {
+				db.users.findOne({ username: logoutReq.username }, function(err, userObj) {
+					if (!err && userObj) {
+						var modified = false;
+						for (var i = 0; i < userObj.keys.length; i++) {
+							if (userObj.keys[i].sessionNumber == logoutReq.session) {
+								userObj.keys.splice(i, 1);
+								modified = true;
+								break;
+							}
+						}
+						if (modified) {
+							db.users.update({ username: logoutReq.username }, { $set: { keys: userObj.keys } }, {}, function() {});
+						}
+						io.emit('logout', { username: logoutReq.username, session: logoutReq.session });
+						console.log("Successfully logged out user: " + logoutReq.username);
+					}
+				});
 			}
-		}
+		});
 	});
 });
 
