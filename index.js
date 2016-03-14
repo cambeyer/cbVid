@@ -416,6 +416,8 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 							}
 						}
 					});
+				} else {
+					console.log("Error getting magnet from input");
 				}
 			});
 		} catch (e) {
