@@ -380,9 +380,21 @@ var getTitle = function(magnet) {
 	}
 };
 
+var broadcastAccess = function(hash, username, callback) {
+	db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, vidEntries) {
+		if (!err && vidEntries.length == 1) {
+			var vidEntry = JSON.parse(JSON.stringify(vidEntries[0]));
+			delete vidEntry.users;
+			sendMessageToUser(username, vidEntry);
+			if (callback) {
+				callback(vidEntries[0]);
+			}
+		}
+	});
+};
+
 app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
-	var encryptedMagnet = atob(req.params.magnet);
-	decrypt(req.params.username, req.params.session, encryptedMagnet, false, function(magnet) {
+	decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
 		var uniqueIdentifier = req.params.username + req.params.session;
 		if (magnet) {
 			try {
@@ -406,8 +418,9 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 										});
 									} else {
 										//entry already exists so try to fulfill the request straightaway
-										db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
-										trySendPlayListFile(hash, uniqueIdentifier);
+										broadcastAccess(hash, req.params.username, function() {
+											trySendPlayListFile(hash, uniqueIdentifier);
+										});
 									}
 								} else {
 									//first time this has been requested
@@ -427,28 +440,28 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 });
 
 var startTorrent = function(hash, magnet, username) {
-	var users = [];
-	users.push(username);
-	db.videos.insert({ hash: hash, title: getTitle(magnet), users: users, torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
+	db.videos.insert({ hash: hash, title: getTitle(magnet), users: [], torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
-			io.emit('status', newDoc);
-			console.log("Initializing torrent request");
-			var engine = torrentStream(magnet, {
-				verify: true,
-				dht: true,
-				tmp: __dirname
-			});
-			engine.on('ready', function() {
-				if (engine.files.length > 0) {
-					var largestFile = engine.files[0];
-					for (var i = 1; i < engine.files.length; i++) {
-						if (engine.files[i].length > largestFile.length) {
-							largestFile = engine.files[i];
+			broadcastAccess(hash, username, function(newDoc) {
+				io.emit('status', newDoc);
+				console.log("Initializing torrent request");
+				var engine = torrentStream(magnet, {
+					verify: true,
+					dht: true,
+					tmp: __dirname
+				});
+				engine.on('ready', function() {
+					if (engine.files.length > 0) {
+						var largestFile = engine.files[0];
+						for (var i = 1; i < engine.files.length; i++) {
+							if (engine.files[i].length > largestFile.length) {
+								largestFile = engine.files[i];
+							}
 						}
+						console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
+						transcode(largestFile.createReadStream(), hash, engine);
 					}
-					console.log("Torrenting file: " + largestFile.name + ", size: " + largestFile.length);
-					transcode(largestFile.createReadStream(), hash, engine);
-				}
+				});
 			});
 		} else {
 			console.log("Could not insert initial video record");
@@ -617,6 +630,18 @@ var sendMyView = function(username, socket) {
 				videos[i].magnet = videos[i].hash;
 			}
 			socket.emit('listtorrent', videos);
+		}
+	});
+};
+
+var sendMessageToUser = function(username, message) {
+	db.users.findOne({ users: username }, function(err, userObj) {
+		if (!err) {
+			for (var i = 0; i < userObj.keys.length; i++) {
+				encrypt(username, userObj.keys[i].sessionNumber, JSON.stringify(message), false, function(encryptedMessage) {
+					io.emit('broadcast', { username: username, sessionNumber: userObj.keys[i].sessionNumber, message: encryptedMessage });
+				});
+			}
 		}
 	});
 };

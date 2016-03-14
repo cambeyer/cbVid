@@ -202,6 +202,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 	});
 	
+	$rootScope.socket.on('broadcast', function(broadcastMessage) {
+		if ($rootScope.isInMyView && broadcastMessage.username == $rootScope.$storage.username && broadcastMessage.sessionNumber == $rootScope.$storage.sessionNumber) {
+			$rootScope.torrentList.unshift(JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8)));
+		}
+	});
+	
 	$rootScope.socket.on('status', function(statusUpdate) {
 		$rootScope.$apply(function() {
 			var extraTime = 0;
