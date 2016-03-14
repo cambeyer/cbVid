@@ -13,13 +13,13 @@
 		<div class="col-lg-5">
 			<ul class="example-animate-container">
 				<li ng-show="search.text && (torrentList | isEmpty)" style="margin-top: 0px"><h3 style="margin-top: 0px">No Results</h3></li>
-				<li ng-if="search.text && (torrent | greenVideo)" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
+				<li ng-if="(torrent | greenVideo)" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
 					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="playTorrent(torrent)">
 						<span class="glyphicon glyphicon-play-circle"></span>
 					</button>
 					<span ng-bind="torrent.title" ng-class="[{done: (torrent.torrenting == false)}, {good: (torrent.remaining <= 0)}]"></span>
 				</li>
-				<li ng-if="search.text && !(torrent | greenVideo)" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
+				<li ng-if="!(torrent | greenVideo)" ng-repeat="torrent in torrentList" class="animate-repeat ellipsis">
 					<button style="margin-right: 10px" type="button" class="btn btn-default btn-sm" ng-click="playTorrent(torrent)">
 						<span class="glyphicon glyphicon-play-circle"></span>
 					</button>

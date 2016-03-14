@@ -348,6 +348,7 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 				.on('end', function() {})
 				.pipe(res);
 		} catch (e) {}
+		db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
 	}
 });
 
@@ -358,7 +359,15 @@ var getMagnet = function(source, callback) {
 };
 
 var getHash = function(magnet) {
-	return magnet.split("btih:")[1].split("&")[0];
+	var hash;
+	try {
+		hash = magnet.split("btih:")[1].split("&")[0];
+	} catch (e) {}
+	if (!hash) {
+		return magnet;
+	} else {
+		return hash;
+	}
 };
 
 app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
@@ -404,7 +413,7 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 });
 
 var startTorrent = function(hash, magnet) {
-	db.videos.insert({ hash: hash, torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
+	db.videos.insert({ hash: hash, title: decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
 			io.emit('status', newDoc);
 			console.log("Initializing torrent request");
@@ -535,6 +544,7 @@ var processStatus = function(list, pos, callback) {
 			list[pos] = vidEntry;
 			list[pos].title = title;
 			list[pos].magnet = magnet;
+			delete vidEntry.users;
 		}
 		callback();
 	});	
@@ -567,6 +577,18 @@ var fetchTorrentList = function(query, socket) {
 			});
 		} else {
 			console.log("Torrent search error: " + error);
+		}
+	});
+};
+
+var sendMyView = function(username, socket) {
+	console.log("Sending view for: " + username);
+	db.videos.find({ users: username }, { _id: 0, users: 0, timeStarted: 0 }, function(err, videos) {
+		if (!err) {
+			for (var i = 0; i < videos.length; i++) {
+				videos[i].magnet = videos[i].hash;
+			}
+			socket.emit('listtorrent', videos);
 		}
 	});
 };
@@ -623,6 +645,11 @@ io.on('connection', function (socket) {
 			}
 		} else {
 			socket.emit('verifyok', 'false');
+		}
+	});
+	socket.on('myview', function(viewReq) {
+		if (decrypt(viewReq.username, viewReq.session, viewReq.encryptedPhrase) == "myview") {
+			sendMyView(viewReq.username, socket);	
 		}
 	});
 	socket.on('logout', function (logoutReq) {

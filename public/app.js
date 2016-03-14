@@ -35,8 +35,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.activeVideo;
-	$rootScope.playingVideo;
-
+	
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
 	
@@ -61,27 +60,30 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 		});
 	});
-
+	
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
 	};
 	
+	$rootScope.getHash = function(magnet) {
+		return magnet.split("btih:")[1].split("&")[0];
+	};
+	
 	$rootScope.pasteTorrent = function() {
-		var magnet = prompt("Please paste a torrent or magnet link to stream");
-		$rootScope.playTorrent(decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), magnet);
+		var magnet = prompt("Please paste magnet link to stream");
+		$rootScope.playTorrent({ magnet: magnet, hash: $rootScope.getHash(magnet) });
 	};
 	
 	$rootScope.playTorrent = function(torrent) {
-		$rootScope.activeVideo = torrent;
+		$rootScope.activeVideo = $.extend(true, {}, torrent);
 		$rootScope.setTitle(torrent.title);
 		$rootScope.setVideo();
 	};
 	
 	$rootScope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
-			$rootScope.playingVideo = videoFile;
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt($rootScope.playingVideo)) + "/stream.m3u8");
+			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt(videoFile)) + "/stream.m3u8");
 		}
 	};
 
@@ -194,6 +196,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.$apply(function() {
 			var extraTime = 0;
 			if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash) {
+				for (var prop in statusUpdate) {
+					if (prop != "_id" && prop != "timeStarted") {
+						$rootScope.activeVideo[prop] = statusUpdate[prop];
+					}
+				}
+				$rootScope.setTitle(statusUpdate.title);
 				if (statusUpdate.remaining) {
 					extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
 				} else if (statusUpdate.terminated) {
@@ -347,6 +355,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	} else {
 		$rootScope.setTitle("Welcome");
 	}
+
+	$scope.requestMyView = function() {
+		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
+	};
 
 	$scope.searchtor = function() {
 		$timeout.cancel(timer);
