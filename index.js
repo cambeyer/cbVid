@@ -348,7 +348,6 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 				.on('end', function() {})
 				.pipe(res);
 		} catch (e) {}
-		db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
 	}
 });
 
@@ -389,18 +388,19 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 								if (vidEntry.terminated) {
 									db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
 										if (!err && numRemoved == 1) {
-											startTorrent(hash, magnet);
+											startTorrent(hash, magnet, req.params.username);
 										} else {
 											console.log("Could not remove terminated entry");
 										}
 									});
 								} else {
 									//entry already exists so try to fulfill the request straightaway
+									db.videos.update({ hash: hash }, { $addToSet: { users: req.params.username } }, {}, function () {});
 									trySendPlayListFile(hash, uniqueIdentifier);
 								}
 							} else {
 								//first time this has been requested
-								startTorrent(hash, magnet);
+								startTorrent(hash, magnet, req.params.username);
 							}
 						}
 					});
@@ -412,8 +412,8 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 	}
 });
 
-var startTorrent = function(hash, magnet) {
-	db.videos.insert({ hash: hash, title: decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
+var startTorrent = function(hash, magnet, username) {
+	db.videos.insert({ hash: hash, title: decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]), users: [].push(username), torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
 			io.emit('status', newDoc);
 			console.log("Initializing torrent request");
