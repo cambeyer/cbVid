@@ -381,10 +381,11 @@ var getTitle = function(magnet) {
 };
 
 var broadcastAccess = function(hash, username, callback) {
-	db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, vidEntries) {
-		if (!err && vidEntries.length == 1) {
+	db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
+		if (!err && numAffected == 1) {
 			var vidEntry = JSON.parse(JSON.stringify(vidEntries[0]));
 			delete vidEntry.users;
+			vidEntry.magnet = vidEntry.hash;
 			sendMessageToUser(username, vidEntry);
 			if (callback) {
 				callback(vidEntries[0]);
@@ -634,13 +635,17 @@ var sendMyView = function(username, socket) {
 	});
 };
 
+var sendOne = function(username, sessionNumber, message) {
+	encrypt(username, sessionNumber, JSON.stringify(message), false, function(encryptedMessage) {
+		io.emit('broadcast', { username: username, sessionNumber: sessionNumber, message: encryptedMessage });
+	});
+};
+
 var sendMessageToUser = function(username, message) {
-	db.users.findOne({ users: username }, function(err, userObj) {
+	db.users.findOne({ username: username }, { "_id": 0 }, function(err, userObj) {
 		if (!err) {
 			for (var i = 0; i < userObj.keys.length; i++) {
-				encrypt(username, userObj.keys[i].sessionNumber, JSON.stringify(message), false, function(encryptedMessage) {
-					io.emit('broadcast', { username: username, sessionNumber: userObj.keys[i].sessionNumber, message: encryptedMessage });
-				});
+				sendOne(username, userObj.keys[i].sessionNumber, message);
 			}
 		}
 	});

@@ -38,6 +38,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
+	$rootScope.isInMyView = false;
 	
 	$rootScope.videoTime;
 	
@@ -202,10 +203,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 	});
 	
-	$rootScope.socket.on('broadcast', function(broadcastMessage) {
-		if ($rootScope.isInMyView && broadcastMessage.username == $rootScope.$storage.username && broadcastMessage.sessionNumber == $rootScope.$storage.sessionNumber) {
-			$rootScope.torrentList.unshift(JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8)));
-		}
+	$rootScope.socket.on('broadcast', function (broadcastMessage) {
+		$rootScope.$apply(function() {
+			if ($rootScope.isInMyView && broadcastMessage.username == $rootScope.$storage.username && broadcastMessage.sessionNumber == $rootScope.$storage.sessionNumber) {
+				$rootScope.torrentList.unshift(JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8)));
+			}
+		});
 	});
 	
 	$rootScope.socket.on('status', function(statusUpdate) {
@@ -371,10 +374,15 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	}
 
 	$scope.requestMyView = function() {
+		$rootScope.isInMyView = true;
+		$rootScope.torrentList = [];
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
 	};
 
 	$scope.searchtor = function() {
+		if ($rootScope.search.text) {
+			$rootScope.isInMyView = false;
+		}
 		$timeout.cancel(timer);
 		if ($rootScope.staleQuery !== $rootScope.search.text) {
 			$rootScope.torrentList = [];
