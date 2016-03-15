@@ -218,7 +218,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					}
 				}
 				if (!found) {
-					$rootScope.torrentList.unshift();
+					$rootScope.torrentList.unshift(item);
 				}
 			}
 		});
@@ -388,6 +388,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$scope.requestMyView = function() {
 		$rootScope.isInMyView = true;
+		$rootScope.search.text = "";
 		$rootScope.torrentList = [];
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
 	};

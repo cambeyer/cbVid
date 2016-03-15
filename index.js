@@ -222,6 +222,7 @@ var transcode = function (stream, hash, engine) {
 									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
 									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 										if (!err) {
+											delete updatedDocs[0].users;
 											io.emit('status', updatedDocs[0]);
 										} else {
 											console.log("Transcode: could not update video ratio");
@@ -398,12 +399,14 @@ var broadcastAccess = function(hash, username, callback) {
 						delete vidEntry.users;
 						vidEntry.magnet = vidEntry.hash;
 						sendMessageToUser(username, vidEntry);
-						if (callback) {
-							callback(vidEntries[0]);
-						}
+						callback(vidEntries[0]);
 					}
 				});
+			} else {
+				callback(vidEntry);
 			}
+		} else {
+			callback();
 		}
 	});
 
