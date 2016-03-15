@@ -408,13 +408,19 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
 	};
 	
+	$scope.requestMyView();
+	
 	$scope.removeTorrent = function(torrent) {
-		$rootScope.socket.emit('remove', UserObj.getUser({ hash: torrent.hash, encryptedPhrase: EncryptService.encrypt('remove') }));
+		if (confirm("Are you sure you want to remove this torrent from the list?")) {
+			$rootScope.socket.emit('remove', UserObj.getUser({ hash: torrent.hash, encryptedPhrase: EncryptService.encrypt('remove') }));
+		}
 	};
 
 	$scope.searchtor = function() {
 		if ($rootScope.search.text) {
 			$rootScope.isInMyView = false;
+		} else {
+			$scope.requestMyView();
 		}
 		$timeout.cancel(timer);
 		if ($rootScope.staleQuery !== $rootScope.search.text) {
