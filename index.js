@@ -382,17 +382,30 @@ var getTitle = function(magnet) {
 };
 
 var broadcastAccess = function(hash, username, callback) {
-	db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
-		if (!err && numAffected == 1) {
-			var vidEntry = JSON.parse(JSON.stringify(vidEntries[0]));
-			delete vidEntry.users;
-			vidEntry.magnet = vidEntry.hash;
-			sendMessageToUser(username, vidEntry);
-			if (callback) {
-				callback(vidEntries[0]);
+	db.videos.findOne({ hash: hash }, function(err, vidEntry) {
+		if (!err && vidEntry) {
+			var modified = true;
+			for (var i = 0; i < vidEntry.users.length; i++) {
+				if (vidEntry.users[i] == username) {
+					modified = false;
+					break;
+				}
+			}
+			if (modified) {
+				db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
+					if (!err && numAffected) {
+						delete vidEntry.users;
+						vidEntry.magnet = vidEntry.hash;
+						sendMessageToUser(username, vidEntry);
+						if (callback) {
+							callback(vidEntries[0]);
+						}
+					}
+				});
 			}
 		}
 	});
+
 };
 
 app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){

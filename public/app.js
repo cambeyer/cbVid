@@ -209,7 +209,17 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('broadcast', function (broadcastMessage) {
 		$rootScope.$apply(function() {
 			if ($rootScope.isInMyView && broadcastMessage.username == $rootScope.$storage.username && broadcastMessage.sessionNumber == $rootScope.$storage.sessionNumber) {
-				$rootScope.torrentList.unshift(JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8)));
+				var item = JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8));
+				var found = false;
+				for (var i = 0; i < $rootScope.torrentList.length; i++) {
+					if ($rootScope.torrentList[i].hash == item.hash) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					$rootScope.torrentList.unshift();
+				}
 			}
 		});
 	});
