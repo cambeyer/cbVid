@@ -234,10 +234,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					}
 				}
 				$rootScope.setTitle(statusUpdate.title);
+				if ($rootScope.activeVideo.remaining && !statusUpdate.remaining) {
+					delete $rootScope.activeVideo.remaining;
+				}
 				if (statusUpdate.remaining) {
 					extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
 				} else if (statusUpdate.terminated) {
 					alert("Sorry! Looks like we aren't able to stream that video.");
+				}
+				if (extraTime) {
+					$rootScope.activeVideo.remaining += extraTime;
 				}
 			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
