@@ -200,8 +200,9 @@ var transcode = function (stream, hash, engine) {
 					engine.remove(false, function() {
 						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 							if (err) {
-								console.log("Could not update video to terminated status");
+								console.log("Could not update video to non-torrenting status");
 							} else {
+								delete updatedDocs[0].users;
 								io.emit('status', updatedDocs[0]);
 							}
 						});	
@@ -254,6 +255,7 @@ var transcode = function (stream, hash, engine) {
 						if (err) {
 							console.log("Could not update video to terminated status");
 						} else {
+							delete updatedDocs[0].users;
 							io.emit('status', updatedDocs[0]);
 						}
 					});
@@ -398,7 +400,36 @@ var broadcastAccess = function(hash, username, callback) {
 					if (!err && numAffected) {
 						delete vidEntry.users;
 						vidEntry.magnet = vidEntry.hash;
-						sendMessageToUser(username, vidEntry);
+						sendMessageToUser(username, {type: 'add', payload: vidEntry});
+						callback(vidEntries[0]);
+					}
+				});
+			} else {
+				callback(vidEntry);
+			}
+		} else {
+			callback();
+		}
+	});
+
+};
+
+var broadcastRemoval = function(hash, username, callback) {
+	db.videos.findOne({ hash: hash }, function(err, vidEntry) {
+		if (!err && vidEntry) {
+			var modified = false;
+			for (var i = 0; i < vidEntry.users.length; i++) {
+				if (vidEntry.users[i] == username) {
+					modified = true;
+					break;
+				}
+			}
+			if (modified) {
+				db.videos.update({ hash: hash }, { $pull: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
+					if (!err && numAffected) {
+						delete vidEntry.users;
+						vidEntry.magnet = vidEntry.hash;
+						sendMessageToUser(username, {type: 'remove', payload: vidEntry});
 						callback(vidEntries[0]);
 					}
 				});
@@ -462,6 +493,7 @@ var startTorrent = function(hash, magnet, username) {
 	db.videos.insert({ hash: hash, title: getTitle(magnet), users: [], torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
 			broadcastAccess(hash, username, function(newDoc) {
+				delete newDoc.users;
 				io.emit('status', newDoc);
 				console.log("Initializing torrent request");
 				var engine = torrentStream(magnet, {
@@ -746,6 +778,15 @@ io.on('connection', function (socket) {
 		decrypt(viewReq.username, viewReq.session, viewReq.encryptedPhrase, false, function(encryptedPhrase) {
 			if (encryptedPhrase == "myview") {
 				sendMyView(viewReq.username, socket);
+			}
+		});
+	});
+	socket.on('remove', function(remReq) {
+		decrypt(remReq.username, remReq.session, remReq.encryptedPhrase, false, function(encryptedPhrase) {
+			if (encryptedPhrase == "remove") {
+				broadcastRemoval(remReq.hash, remReq.username, function(vidEntry) {
+					console.log("User " + remReq.username + " removed torrent " + vidEntry.title);
+				});
 			}
 		});
 	});

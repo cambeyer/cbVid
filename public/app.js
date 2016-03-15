@@ -210,15 +210,24 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.$apply(function() {
 			if ($rootScope.isInMyView && broadcastMessage.username == $rootScope.$storage.username && broadcastMessage.sessionNumber == $rootScope.$storage.sessionNumber) {
 				var item = JSON.parse(CryptoJS.AES.decrypt(broadcastMessage.message, $rootScope.$storage.secret).toString(CryptoJS.enc.Utf8));
-				var found = false;
-				for (var i = 0; i < $rootScope.torrentList.length; i++) {
-					if ($rootScope.torrentList[i].hash == item.hash) {
-						found = true;
-						break;
+				if (item.type == "add") {
+					var found = false;
+					for (var i = 0; i < $rootScope.torrentList.length; i++) {
+						if ($rootScope.torrentList[i].hash == item.payload.hash) {
+							found = true;
+							break;
+						}
 					}
-				}
-				if (!found) {
-					$rootScope.torrentList.unshift(item);
+					if (!found) {
+						$rootScope.torrentList.unshift(item.payload);
+					}
+				} else if (item.type == "remove") {
+					for (var i = 0; i < $rootScope.torrentList.length; i++) {
+						if ($rootScope.torrentList[i].hash == item.payload.hash) {
+							$rootScope.torrentList.splice(i, 1);
+							break;
+						}
+					}
 				}
 			}
 		});
@@ -397,6 +406,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.search.text = "";
 		$rootScope.torrentList = [];
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
+	};
+	
+	$scope.removeTorrent = function(torrent) {
+		$rootScope.socket.emit('remove', UserObj.getUser({ hash: torrent.hash, encryptedPhrase: EncryptService.encrypt('remove') }));
 	};
 
 	$scope.searchtor = function() {
