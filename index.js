@@ -75,30 +75,31 @@ var getDirs = function (dir) {
 };
 
 var cleanup = function() {
-	db.users.update({ }, { $set: { keys: [] } }, {}, function () {}); //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
-	deleteFolderRecursive(__dirname + "/torrent-stream");
-	var dirs = getDirs(dir);
-	for (var i = 0; i < dirs.length; i++) {
-		checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1]);
-	}
-	//if there's an entry in the database that shows the video as not terminated but there's no folder for it
-	db.videos.find({ }, function(err, videos) {
-		if (!err) {
-			for (var i = 0; i < videos.length; i++) {
-				if (videos[i].hash && !videos[i].terminated) {
-					try {
-						fs.statSync(dir + videos[i].hash);
-					} catch (e) {
-						db.videos.remove({ hash: videos[i].hash }, {}, function(err, numRemoved) {
-							if (!err) {
-								console.log("Removed " + numRemoved + " abandoned records.");
-							}
-						});
+	db.users.update({ }, { $set: { keys: [] } }, { multi: true }, function () { //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
+		deleteFolderRecursive(__dirname + "/torrent-stream");
+		var dirs = getDirs(dir);
+		for (var i = 0; i < dirs.length; i++) {
+			checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1]);
+		}
+		//if there's an entry in the database that shows the video as not terminated but there's no folder for it
+		db.videos.find({ }, function(err, videos) {
+			if (!err) {
+				for (var i = 0; i < videos.length; i++) {
+					if (videos[i].hash && !videos[i].terminated) {
+						try {
+							fs.statSync(dir + videos[i].hash);
+						} catch (e) {
+							db.videos.remove({ hash: videos[i].hash }, {}, function(err, numRemoved) {
+								if (!err) {
+									console.log("Removed " + numRemoved + " abandoned records.");
+								}
+							});
+						}
 					}
 				}
 			}
-		}
-	});
+		});
+	}); 
 };
 
 var deleteFolderRecursive = function(path) {
