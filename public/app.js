@@ -158,6 +158,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			});
 			$rootScope.activeVideo = undefined;
 			EncryptService.reset();
+			$rootScope.torrentList = [];
 			$rootScope.search.text = '';
 			$rootScope.staleQuery = '';
 			$state.reload();
@@ -175,6 +176,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			} else if (oldValue && !newValue) {
 				$rootScope.activeVideo = undefined;
 				EncryptService.reset();
+				$rootScope.torrentList = [];
 				$rootScope.search.text = '';
 				$rootScope.staleQuery = '';
 				$state.go('auth');
@@ -191,6 +193,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.search.text = '';
 			$rootScope.staleQuery = '';
 			$rootScope.activeVideo = undefined;
+			$rootScope.torrentList = [];
 			$localStorage.$reset();
 			EncryptService.reset();
 			$state.go('auth');

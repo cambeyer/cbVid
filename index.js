@@ -75,6 +75,7 @@ var getDirs = function (dir) {
 };
 
 var cleanup = function() {
+	db.users.update({ }, { $set: { keys: [] } }, {}, function () {}); //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
 	deleteFolderRecursive(__dirname + "/torrent-stream");
 	var dirs = getDirs(dir);
 	for (var i = 0; i < dirs.length; i++) {
