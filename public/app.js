@@ -49,6 +49,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI = api;
 		$rootScope.flowAPI.on("ready", function () {
 			$rootScope.flowAPI.seek(0, function() {});
+			$rootScope.flowAPI.play();
 		});
 		$rootScope.flowAPI.on("beforeseek", function() {
 			$rootScope.videoTime = arguments[2];
