@@ -411,6 +411,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$scope.requestMyView = function() {
 		$rootScope.isInMyView = true;
 		$rootScope.search.text = "";
+		$rootScope.staleQuery = "";
 		$rootScope.torrentList = [];
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
 	};

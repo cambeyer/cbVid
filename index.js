@@ -178,7 +178,7 @@ var transcode = function (stream, hash, engine) {
 					'-ar 44100',
 					'-pix_fmt yuv420p',
 					'-profile:v baseline',
-					'-preset:v superfast',
+					'-preset:v superfast', //ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, very slow
 					'-x264opts level=3.0',
 					'-threads 0',
 					'-flags +global_header',
