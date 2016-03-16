@@ -98,7 +98,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		}
 	};
 
-	$rootScope.setVideo = function () {
+	$rootScope.setVideo = function (transitioning) {
 		$('video').each(function() {
 			$($(this)[0]).attr('src', '');
 			$(this)[0].pause();
@@ -107,7 +107,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$("#flow").remove();
 		if ($rootScope.activeVideo.magnet) {
 			$('<div/>', { id: 'flow' }).appendTo('.player');
-			$rootScope.videoTime = 0;
+			if (!transitioning) {
+				$rootScope.videoTime = 0;
+			}
 			$("#flow").flowplayer({
 				fullscreen: true,
 				native_fullscreen: true,
@@ -259,7 +261,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					$rootScope.activeVideo.remaining += extraTime;
 				}
 				if (transitionToSeekable) {
-					$rootScope.setVideo();
+					$rootScope.setVideo(transitionToSeekable);
 				}
 			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
