@@ -48,9 +48,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	flowplayer(function (api, root) {
 		$rootScope.flowAPI = api;
 		$rootScope.flowAPI.on("ready", function () {
-			$rootScope.flowAPI.seek(0, function() {});
 			if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
 				$rootScope.flowAPI.play();
+			} else {
+				$rootScope.flowAPI.seek(0, function() {});
 			}
 		});
 		$rootScope.flowAPI.on("beforeseek", function() {
