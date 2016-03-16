@@ -675,7 +675,7 @@ var fetchTorrentList = function(query, socket) {
 
 var sendMyView = function(username, socket) {
 	console.log("Sending view for: " + username);
-	db.videos.find({ users: username }, { _id: 0, users: 0, timeStarted: 0 }, function(err, videos) {
+	db.videos.find({ users: username, terminated: false }, { _id: 0, users: 0, timeStarted: 0 }, function(err, videos) {
 		if (!err) {
 			for (var i = 0; i < videos.length; i++) {
 				videos[i].magnet = videos[i].hash;
