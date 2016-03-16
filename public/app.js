@@ -54,9 +54,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$rootScope.videoTime = arguments[2];
 		});
 		$rootScope.flowAPI.on("progress", function() {
-			if (arguments[2] - $rootScope.videoTime > 5) {
+			if (Math.abs(arguments[2] - $rootScope.videoTime > 5)) {
 				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
-			} else if (Math.abs(arguments[2] - $rootScope.videoTime) < 5) {
+			} else {
 				$rootScope.videoTime = arguments[2];
 			}
 		});
@@ -261,6 +261,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					$rootScope.activeVideo.remaining += extraTime;
 				}
 				if (transitionToSeekable) {
+					alert("Transitioning to fully seekable");
 					$rootScope.setVideo(transitionToSeekable);
 				}
 			}
