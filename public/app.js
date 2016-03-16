@@ -236,7 +236,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('status', function(statusUpdate) {
 		$rootScope.$apply(function() {
 			var extraTime = 0;
+			var transitionToSeekable = false;
 			if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash) {
+				if ($rootScope.activeVideo.torrenting && !statusUpdate.torrenting && !statusUpdate.terminated) {
+					transitionToSeekable = true;
+				}
 				for (var prop in statusUpdate) {
 					if (prop != "_id" && prop != "timeStarted") {
 						$rootScope.activeVideo[prop] = statusUpdate[prop];
@@ -253,6 +257,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				}
 				if (extraTime) {
 					$rootScope.activeVideo.remaining += extraTime;
+				}
+				if (transitionToSeekable) {
+					$rootScope.setVideo();
 				}
 			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {

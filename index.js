@@ -202,8 +202,8 @@ var transcode = function (stream, hash, engine) {
 							if (err) {
 								console.log("Could not update video to non-torrenting status");
 							} else {
-								delete updatedDocs[0].users;
-								io.emit('status', updatedDocs[0]);
+								delete updatedDocs.users;
+								io.emit('status', updatedDocs);
 							}
 						});	
 					});
@@ -223,8 +223,8 @@ var transcode = function (stream, hash, engine) {
 									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
 									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 										if (!err) {
-											delete updatedDocs[0].users;
-											io.emit('status', updatedDocs[0]);
+											delete updatedDocs.users;
+											io.emit('status', updatedDocs);
 										} else {
 											console.log("Transcode: could not update video ratio");
 										}
@@ -255,8 +255,8 @@ var transcode = function (stream, hash, engine) {
 						if (err) {
 							console.log("Could not update video to terminated status");
 						} else {
-							delete updatedDocs[0].users;
-							io.emit('status', updatedDocs[0]);
+							delete updatedDocs.users;
+							io.emit('status', updatedDocs);
 						}
 					});
 					for (var uniqueIdentifier in needingResponse[hash]) {
@@ -401,7 +401,7 @@ var broadcastAccess = function(hash, username, callback) {
 						delete vidEntry.users;
 						vidEntry.magnet = vidEntry.hash;
 						sendMessageToUser(username, {type: 'add', payload: vidEntry});
-						callback(vidEntries[0]);
+						callback(vidEntries);
 					}
 				});
 			} else {
@@ -430,7 +430,7 @@ var broadcastRemoval = function(hash, username, callback) {
 						delete vidEntry.users;
 						vidEntry.magnet = vidEntry.hash;
 						sendMessageToUser(username, {type: 'remove', payload: vidEntry});
-						callback(vidEntries[0]);
+						callback(vidEntries);
 					}
 				});
 			} else {
