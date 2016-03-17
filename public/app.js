@@ -49,16 +49,20 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI = api;
 		$rootScope.flowAPI.on("ready", function () {
 			if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
+				console.log("Ready, enough available, playing: " + $rootScope.videoTime);
 				$rootScope.flowAPI.play();
 			} else {
+				console.log("Ready, not enough available, seeking to beginning: " + $rootScope.videoTime);
 				$rootScope.flowAPI.seek(0, function() {});
 			}
 		});
 		$rootScope.flowAPI.on("beforeseek", function() {
+			console.log("Before seek " + $rootScope.videoTime + " going to " + arguments[2]);
 			$rootScope.videoTime = arguments[2];
 		});
 		$rootScope.flowAPI.on("progress", function() {
 			if (Math.abs(arguments[2] - $rootScope.videoTime > 5)) {
+				console("Progress is off from videoTime: " + arguments[2] + " compared to " + $rootScope.videoTime);
 				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
 			} else {
 				$rootScope.videoTime = arguments[2];
