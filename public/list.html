@@ -8,6 +8,11 @@
 				</h3>
 				<span ng-if="activeVideo.terminated" style="color: red">This video cannot be streamed.</span>
 				<span ng-if="activeVideo.remaining && activeVideo.remaining > 0" ng-class="[{bad: (activeVideo.remaining > 30)}, {borderline: (activeVideo.remaining < 30 && activeVideo.remaining > 0)}, {good: (activeVideo.remaining <= 0)}]">Wait <span ng-if="activeVideo.remaining < 86400"> {{activeVideo.remaining | secondsToDateTime | date:'HH:mm:ss'}}</span> before playing or you won't be able to watch all the way through.</span>
+				<span ng-if="canTransition">
+					<button type="button" class="btn btn-default btn-sm" ng-click="setVideo(true)">
+						Make Seekable
+					</button>
+				</span>
 			</div>
 		</div>
 		<div class="col-lg-5">

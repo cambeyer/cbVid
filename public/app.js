@@ -40,7 +40,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.staleQuery = "";
 	$rootScope.isInMyView = false;
 	
-	$rootScope.videoTime;
+	$rootScope.canTransition = false;
+	
+	$rootScope.videoTime = 0;
 	
 	$rootScope.flowAPI;
 	
@@ -49,20 +51,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.flowAPI = api;
 		$rootScope.flowAPI.on("ready", function () {
 			if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
-				console.log("Ready, enough available, playing: " + $rootScope.videoTime);
 				$rootScope.flowAPI.play();
 			} else {
-				console.log("Ready, not enough available, seeking to beginning: " + $rootScope.videoTime);
 				$rootScope.flowAPI.seek(0, function() {});
 			}
 		});
 		$rootScope.flowAPI.on("beforeseek", function() {
-			console.log("Before seek " + $rootScope.videoTime + " going to " + arguments[2]);
 			$rootScope.videoTime = arguments[2];
 		});
 		$rootScope.flowAPI.on("progress", function() {
-			if (Math.abs(arguments[2] - $rootScope.videoTime > 5)) {
-				console("Progress is off from videoTime: " + arguments[2] + " compared to " + $rootScope.videoTime);
+			if (Math.abs(arguments[2] - $rootScope.videoTime) > 10) {
 				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
 			} else {
 				$rootScope.videoTime = arguments[2];
@@ -107,6 +105,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 
 	$rootScope.setVideo = function (transitioning) {
+		$rootScope.canTransition = false;
 		$('video').each(function() {
 			$($(this)[0]).attr('src', '');
 			$(this)[0].pause();
@@ -117,6 +116,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			$('<div/>', { id: 'flow' }).appendTo('.player');
 			if (!transitioning) {
 				$rootScope.videoTime = 0;
+			} else {
+				console.log("Transitioning to seekable, videoTime: " + $rootScope.videoTime);
 			}
 			$("#flow").flowplayer({
 				fullscreen: true,
@@ -268,10 +269,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				if (extraTime) {
 					$rootScope.activeVideo.remaining += extraTime;
 				}
-				if (transitionToSeekable) {
-					alert("Transitioning to fully seekable");
-					$rootScope.setVideo(transitionToSeekable);
-				}
+			}
+			if (transitionToSeekable) {
+				$rootScope.canTransition = true;
 			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
 				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {
