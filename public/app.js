@@ -84,8 +84,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.player = this;
 				$rootScope.player.on('loadedmetadata', function() {
 					$rootScope.player.controls(true);
-					
-					$rootScope.player.play();
+					if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
+						$rootScope.player.play();
+					}
 				});
 				$rootScope.setVideo();
 			});
