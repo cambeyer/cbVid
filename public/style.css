@@ -60,10 +60,18 @@ html, body {
     margin: 0 auto;
 }
 
+.vjs-fullscreen {
+    max-width: none !important;
+}
+
 .video-js .vjs-tech {
     position: relative !important;
     width: 100% !important;
-    height: auto !important;
+    height: auto;
+}
+
+.vjs-fullscreen .vjs-tech {
+    height: 100% !important;
 }
 
 a:link {
