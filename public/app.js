@@ -35,39 +35,12 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	
 	$rootScope.activeVideo;
+	$rootScope.player;
 	
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
 	$rootScope.isInMyView = false;
-	
-	$rootScope.canTransition = false;
-	
-	$rootScope.videoTime = 0;
-	
-	$rootScope.flowAPI;
-	
-	/*global flowplayer*/
-	flowplayer(function (api, root) {
-		$rootScope.flowAPI = api;
-		$rootScope.flowAPI.on("ready", function () {
-			if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
-				$rootScope.flowAPI.play();
-			} else {
-				$rootScope.flowAPI.seek(0, function() {});
-			}
-		});
-		$rootScope.flowAPI.on("beforeseek", function() {
-			$rootScope.videoTime = arguments[2];
-		});
-		$rootScope.flowAPI.on("progress", function() {
-			if (Math.abs(arguments[2] - $rootScope.videoTime) > 10) {
-				$rootScope.flowAPI.seek($rootScope.videoTime, function() {});
-			} else {
-				$rootScope.videoTime = arguments[2];
-			}
-		});
-	});
-	
+
 	$rootScope.setTitle = function(title) {
 		$rootScope.title = title + " - cbVid";
 	};
@@ -100,52 +73,29 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			/*global btoa*/
-			return $sce.trustAsResourceUrl("./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt(videoFile)) + "/stream.m3u8");
+			return "./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt(videoFile)) + "/stream.m3u8";
 		}
 	};
 
-	$rootScope.setVideo = function (transitioning) {
-		$rootScope.canTransition = false;
-		$('video').each(function() {
-			$($(this)[0]).attr('src', '');
-			$(this)[0].pause();
-			$(this)[0].load();
-		});
-		$("#flow").remove();
-		if ($rootScope.activeVideo.magnet) {
-			$('<div/>', { id: 'flow' }).appendTo('.player');
-			if (!transitioning) {
-				$rootScope.videoTime = 0;
-			} else {
-				console.log("Transitioning to seekable, videoTime: " + $rootScope.videoTime);
-			}
-			$("#flow").flowplayer({
-				fullscreen: true,
-				native_fullscreen: true,
-				debug: false,
-			    clip: {
-			    	sources: [
-			              {
-			              	type: "application/x-mpegurl",
-			                src:  $rootScope.videoString($rootScope.activeVideo.magnet)
-			              }
-			        ]
-			    }
+	$rootScope.setVideo = function () {
+		if (!$rootScope.player) {
+			/*global videojs*/
+			videojs("video", {}, function(){
+				$rootScope.player = this;
+				$rootScope.player.on('loadedmetadata', function() {
+					$rootScope.player.controls(true);
+					
+					$rootScope.player.play();
+				});
+				$rootScope.setVideo();
 			});
-
-			$('.fp-engine').attr('preload', 'auto');
-			$('.fp-embed').remove();
-			$('.fp-brand').remove();
-			if ($rootScope.activeVideo.torrenting == undefined || $rootScope.activeVideo.torrenting) {
-				$('.fp-duration').remove();
-				$('.fp-remaining').remove();
-				//$('.fp-time').remove();
-				$('.fp-timeline').remove();
+		} else {
+			if ($rootScope.activeVideo.magnet) {
+				$rootScope.player.controls(false);
+				$rootScope.player.src({"type": "application/x-mpegURL", "src": $rootScope.videoString($rootScope.activeVideo.magnet)});
 			}
-			$('a[href*="flowplayer"]').remove();
-			$('.fp-context-menu').addClass('hidden');
-			$('.fp-volume').css('right', '40px');
 		}
+		
 	};
 
 	$rootScope.socket.on('reconnect', function (num) {
@@ -247,11 +197,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.socket.on('status', function(statusUpdate) {
 		$rootScope.$apply(function() {
 			var extraTime = 0;
-			var transitionToSeekable = false;
 			if ($rootScope.activeVideo && $rootScope.activeVideo.hash == statusUpdate.hash) {
-				if ($rootScope.activeVideo.torrenting && !statusUpdate.torrenting && !statusUpdate.terminated) {
-					transitionToSeekable = true;
-				}
 				for (var prop in statusUpdate) {
 					if (prop != "_id" && prop != "timeStarted") {
 						$rootScope.activeVideo[prop] = statusUpdate[prop];
@@ -262,16 +208,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					delete $rootScope.activeVideo.remaining;
 				}
 				if (statusUpdate.remaining) {
-					extraTime = $rootScope.flowAPI.ready ? $rootScope.flowAPI.video.time : 0;
+					extraTime = $rootScope.player.currentTime() ? $rootScope.player.currentTime() : 0;
 				} else if (statusUpdate.terminated) {
 					alert("Sorry! Looks like we aren't able to stream that video.");
 				}
 				if (extraTime) {
 					$rootScope.activeVideo.remaining += extraTime;
 				}
-			}
-			if (transitionToSeekable) {
-				$rootScope.canTransition = true;
 			}
 			for (var i = 0; i < $rootScope.torrentList.length; i++) {
 				if ($rootScope.torrentList[i].hash == statusUpdate.hash) {

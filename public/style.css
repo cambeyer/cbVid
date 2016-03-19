@@ -53,23 +53,17 @@ html, body {
     -o-text-overflow: ellipsis;
 }
 
-.flowplayer {
-  background-image: none !important;
-  background-color: black !important;
-  max-width: 720px;
-  /*max-height: 500px;*/
-  height: 100%;
-  overflow: hidden;
+.video-js {
+    max-width: 720px;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 auto;
 }
 
-video.fp-engine {
-  width: initial !important;
-  position: initial !important;
-  max-width: 100%;
-}
-
-.fp-player {
-  background-color: black !important;
+.video-js .vjs-tech {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
 }
 
 a:link {

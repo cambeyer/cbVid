@@ -144,7 +144,7 @@ var transcode = function (stream, hash, engine) {
 	    	var baseCommand = ffmpeg(stream)
 	    		.videoCodec('libx264')
 				.videoBitrate('1024k')
-	    		.audioCodec('libmp3lame')
+	    		.audioCodec('aac')
 	    		.audioBitrate('128k')
 	    		.size('?x720')
 	    		.fps(30)
