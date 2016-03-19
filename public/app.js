@@ -80,10 +80,16 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.setVideo = function () {
 		if (!$rootScope.player) {
 			/*global videojs*/
-			videojs("video", {}, function(){
+			videojs("video", {
+				plugins: {
+					chromecast: {
+						appId: "cbVid"
+					}
+				}
+			}, function(){
 				$rootScope.player = this;
 				$rootScope.player.on('loadedmetadata', function() {
-					$rootScope.player.controls(true);
+					//$rootScope.player.controls(true);
 					if ((!$rootScope.activeVideo.torrenting || $rootScope.activeVideo.remaining < 0) && !$rootScope.activeVideo.terminated) {
 						$rootScope.player.play();
 					}
@@ -92,7 +98,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			});
 		} else {
 			if ($rootScope.activeVideo.magnet) {
-				$rootScope.player.controls(false);
+				//$rootScope.player.controls(false);
 				$rootScope.player.src({"type": "application/x-mpegURL", "src": $rootScope.videoString($rootScope.activeVideo.magnet)});
 			}
 		}
