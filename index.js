@@ -212,7 +212,7 @@ var transcode = function (stream, hash, engine) {
 				})
 				.on('progress', function(progress) {
 					clearTimeout(timeout);
-					timeout = setTimeout(killTranscode(hash, command, probeCommand, engine), NO_PROGRESS_RECURRING_TIMEOUT * 1000);
+					timeout = setTimeout(function() { killTranscode("No progress has been made in an hour; killing the process", hash, command, probeCommand, engine); }, NO_PROGRESS_RECURRING_TIMEOUT * 1000);
 					var now = Date.now();
 					if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
 						lastUpdate = Date.now();
@@ -248,13 +248,13 @@ var transcode = function (stream, hash, engine) {
 				})
 				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				
-			timeout = setTimeout(killTranscode(hash, command, probeCommand, engine), NO_PROGRESS_INITIAL_TIMEOUT * 1000);
+			timeout = setTimeout(function() { killTranscode("No initial progress has been made; killing the process", hash, command, probeCommand, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 	    }
 	});
 };
 
-var killTranscode = function(hash, command, probeCommand, engine) {
-	console.log("No progress has been made; killing the process.");
+var killTranscode = function(message, hash, command, probeCommand, engine) {
+	console.log(message);
 	if (command) { command.kill(); }
 	if (probeCommand) { probeCommand.kill(); }
 	engine.remove(false, function() {
