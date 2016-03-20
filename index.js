@@ -24,7 +24,8 @@ var DB_EXT = '.db';
 var M3U8_EXT = ".m3u8";
 var TS_EXT = ".ts";
 var SEQUENCE_SEPARATOR = "_";
-var NO_PROGRESS_TIMEOUT = 60; //seconds
+var NO_PROGRESS_INITIAL_TIMEOUT = 60; //seconds
+var NO_PROGRESS_RECURRING_TIMEOUT = 60 * 60; //seconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
 var DAYS_RETENTION_PERIOD = 10; //days
 var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
@@ -137,6 +138,7 @@ var checkRemove = function(hash) {
 var transcode = function (stream, hash, engine) {
 	var lastUpdate;
 	var totalDuration;
+	var timeout;
 	fs.mkdir(dir + hash, function(err) {
 	    if (err && err.code !== 'EEXIST') {
 	    	console.log("Transcode: error creating video folder");
@@ -210,6 +212,7 @@ var transcode = function (stream, hash, engine) {
 				})
 				.on('progress', function(progress) {
 					clearTimeout(timeout);
+					timeout = setTimeout(killTranscode(hash, command, probeCommand, engine), NO_PROGRESS_RECURRING_TIMEOUT * 1000);
 					var now = Date.now();
 					if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
 						lastUpdate = Date.now();
@@ -245,28 +248,30 @@ var transcode = function (stream, hash, engine) {
 				})
 				.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 				
-			var timeout = setTimeout(function() {
-				console.log("No progress has been made; killing the process.");
-				if (command) { command.kill(); }
-				if (probeCommand) { probeCommand.kill(); }
-				engine.remove(false, function() {
-					deleteFolderRecursive(dir + hash);
-					db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-						if (err) {
-							console.log("Could not update video to terminated status");
-						} else {
-							delete updatedDocs.users;
-							io.emit('status', updatedDocs);
-						}
-					});
-					for (var uniqueIdentifier in needingResponse[hash]) {
-						needingResponse[hash][uniqueIdentifier].end();
-						delete needingResponse[hash][uniqueIdentifier];
-					}
-					delete needingResponse[hash];
-				});
-			}, NO_PROGRESS_TIMEOUT * 1000);
+			timeout = setTimeout(killTranscode(hash, command, probeCommand, engine), NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 	    }
+	});
+};
+
+var killTranscode = function(hash, command, probeCommand, engine) {
+	console.log("No progress has been made; killing the process.");
+	if (command) { command.kill(); }
+	if (probeCommand) { probeCommand.kill(); }
+	engine.remove(false, function() {
+		deleteFolderRecursive(dir + hash);
+		db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
+			if (err) {
+				console.log("Could not update video to terminated status");
+			} else {
+				delete updatedDocs.users;
+				io.emit('status', updatedDocs);
+			}
+		});
+		for (var uniqueIdentifier in needingResponse[hash]) {
+			needingResponse[hash][uniqueIdentifier].end();
+			delete needingResponse[hash][uniqueIdentifier];
+		}
+		delete needingResponse[hash];
 	});
 };
 
