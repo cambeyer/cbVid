@@ -199,6 +199,7 @@ var transcode = function (stream, hash, engine) {
 					//console.log(cmdline);
 				})
 				.on('end', function() {
+					clearTimeout(timeout);
 					engine.remove(false, function() {
 						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 							if (err) {
