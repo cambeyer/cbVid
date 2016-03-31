@@ -59,9 +59,17 @@ db.users = new nedb({ filename: dir + "/users" + DB_EXT, autoload: true });
 db.users.persistence.setAutocompactionInterval(200000);
 db.users.ensureIndex({ fieldName: 'username', unique: true });
 
-db.videos = new nedb({ filename: dir + "/videos" + DB_EXT, autoload: true});
+db.videos = new nedb({ filename: dir + "/videos" + DB_EXT, autoload: true, timestampData: true });
 db.videos.persistence.setAutocompactionInterval(200000);
 db.videos.ensureIndex({ fieldName: 'hash', unique: true });
+db.videos.ensureIndex({ fieldName: 'updatedAt', expireAfterSeconds: DAYS_RETENTION_PERIOD*24*60*60 }); //remove entries after the retention period has expired
+
+var startup = function() {
+	db.users.update({ }, { $set: { keys: [] } }, { multi: true }, function () { //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
+		deleteFolderRecursive(__dirname + "/torrent-stream");
+		cleanup(true);
+	});
+};
 
 var getDirs = function (dir) {
     var dirs = [];
@@ -75,62 +83,57 @@ var getDirs = function (dir) {
     return dirs;
 };
 
-var cleanup = function() {
-	db.users.update({ }, { $set: { keys: [] } }, { multi: true }, function () { //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
-		deleteFolderRecursive(__dirname + "/torrent-stream");
-		var dirs = getDirs(dir);
-		for (var i = 0; i < dirs.length; i++) {
-			checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1]);
-		}
-		//if there's an entry in the database that shows the video as not terminated but there's no folder for it
-		db.videos.find({ }, function(err, videos) {
-			if (!err) {
-				for (var i = 0; i < videos.length; i++) {
-					if (videos[i].hash && !videos[i].terminated) {
-						try {
-							fs.statSync(dir + videos[i].hash);
-						} catch (e) {
-							db.videos.remove({ hash: videos[i].hash }, {}, function(err, numRemoved) {
-								if (!err) {
-									console.log("Removed " + numRemoved + " abandoned records.");
-								}
-							});
-						}
+var cleanup = function(startup) {
+	var dirs = getDirs(dir);
+	for (var i = 0; i < dirs.length; i++) {
+		checkRemove(dirs[i].split('/')[dirs[i].split('/').length - 1], startup);
+	}
+	//if there's an entry in the database that shows the video as not terminated but there's no folder for it
+	db.videos.find({ }, function(err, videos) {
+		if (!err) {
+			for (var i = 0; i < videos.length; i++) {
+				if (videos[i].hash && !videos[i].terminated) {
+					try {
+						fs.statSync(dir + videos[i].hash);
+					} catch (e) {
+						db.videos.remove({ hash: videos[i].hash }, {}, function(err, numRemoved) {
+							if (!err) {
+								console.log("Removed " + numRemoved + " abandoned records.");
+							}
+						});
 					}
 				}
 			}
-		});
-	}); 
+		}
+	});
 };
 
 var deleteFolderRecursive = function(path) {
 	if (fs.existsSync(path)) {
-	fs.readdirSync(path).forEach(function(file, index){
-		var curPath = path + "/" + file;
-		if(fs.lstatSync(curPath).isDirectory()) {
-			deleteFolderRecursive(curPath);
-		} else {
-			fs.unlinkSync(curPath);
-		}
-	});
-	fs.rmdirSync(path);
+		fs.readdirSync(path).forEach(function(file, index) {
+			var curPath = path + "/" + file;
+			if(fs.lstatSync(curPath).isDirectory()) {
+				deleteFolderRecursive(curPath);
+			} else {
+				fs.unlinkSync(curPath);
+			}
+		});
+		fs.rmdirSync(path);
 	}
 };
 
 //if there's a folder for a video but it's not in the database
-//if there's a folder for a video and it's in the database, but it never completed and was not terminated
-var checkRemove = function(hash) {
+//if there's a folder for a video and it's in the database, but it never completed and was not terminated [ONLY ON STARTUP]
+var checkRemove = function(hash, startup) {
 	db.videos.find({ hash: hash }, function(err, videos) {
 		if (!err && videos.length == 0) {
 			try {
-				console.log("Removing " + dir + hash);
+				console.log("Removing " + dir + hash + " because it is not in the videos database");
 				deleteFolderRecursive(dir + hash);
 			} catch (e) { }
-		} else if (videos.length == 1) {
-			if (videos[0].torrenting || (!videos[0].terminated && (Date.now() - videos[0].timeStarted)/1000/60/60/24 > DAYS_RETENTION_PERIOD)) {
-				console.log("Removing " + dir + hash + " because it was not finished or is too old");
+		} else if (startup && videos.length == 1 && videos[0].torrenting) {
+				console.log("Removing " + dir + hash + " because it was not finished");
 				deleteFolderRecursive(dir + hash);
-			}
 		}
 	});
 };
@@ -220,7 +223,7 @@ var transcode = function (stream, hash, engine) {
 						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
 							if (!err && vidEntry != null) {
 								var secondsOfMovieProcessed = convertToSeconds(progress.timemark);
-								var secondsOfTimeSpentProcessing = ((now - vidEntry.timeStarted) / 1000);
+								var secondsOfTimeSpentProcessing = ((now - vidEntry.createdAt) / 1000);
 								if (totalDuration) {
 									//console.log("Processed " + seconds + " of " + duration);
 									var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
@@ -402,17 +405,15 @@ var broadcastAccess = function(hash, username, callback) {
 				}
 			}
 			if (modified) {
-				db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
-					if (!err && numAffected) {
-						delete vidEntry.users;
-						vidEntry.magnet = vidEntry.hash;
-						sendMessageToUser(username, {type: 'add', payload: vidEntry});
-						callback(vidEntries);
-					}
-				});
-			} else {
-				callback(vidEntry);
+				delete vidEntry.users;
+				vidEntry.magnet = vidEntry.hash;
+				sendMessageToUser(username, {type: 'add', payload: vidEntry});
 			}
+			db.videos.update({ hash: hash }, { $addToSet: { users: username } }, { returnUpdatedDocs: true }, function (err, numAffected, vidEntries) {
+				if (!err && numAffected) {
+					callback(vidEntries);
+				}
+			});
 		} else {
 			callback();
 		}
@@ -496,7 +497,7 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 });
 
 var startTorrent = function(hash, magnet, username) {
-	db.videos.insert({ hash: hash, title: getTitle(magnet), users: [], torrenting: true, terminated: false, timeStarted: Date.now(), remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
+	db.videos.insert({ hash: hash, title: getTitle(magnet), users: [], torrenting: true, terminated: false, remaining: INITIAL_REMAINING_ESTIMATE }, function (err, newDoc) {
 		if (!err) {
 			broadcastAccess(hash, username, function(newDoc) {
 				delete newDoc.users;
@@ -613,7 +614,7 @@ var lookupByMagnet = function(magnet, callback) {
 	getMagnet(magnet, function(err, magnet) {
 		if (!err) {
 			var hash = getHash(magnet);
-			db.videos.findOne({ hash: hash }, { timeStarted: 0, _id: 0 }, function(err, vidEntry) {
+			db.videos.findOne({ hash: hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
 				if (!err) {
 					callback(vidEntry);
 				}
@@ -681,7 +682,7 @@ var fetchTorrentList = function(query, socket) {
 
 var sendMyView = function(username, socket) {
 	console.log("Sending view for: " + username);
-	db.videos.find({ users: username, terminated: false }, { _id: 0, users: 0, timeStarted: 0 }, function(err, videos) {
+	db.videos.find({ users: username, terminated: false }, { _id: 0, users: 0, createdAt: 0, updatedAt: 0 }, function(err, videos) {
 		if (!err) {
 			for (var i = 0; i < videos.length; i++) {
 				videos[i].magnet = videos[i].hash;
@@ -823,5 +824,5 @@ io.on('connection', function (socket) {
 
 http.listen(80, "0.0.0.0", function (){
 	console.log('listening on *:80');
-	cleanup();
+	startup();
 });
