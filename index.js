@@ -146,6 +146,7 @@ var transcode = function (stream, hash, engine) {
 	    if (err && err.code !== 'EEXIST') {
 	    	console.log("Transcode: error creating video folder");
 	    } else {
+	    	cleanup();
 	    	var baseCommand = ffmpeg(stream)
 	    		.videoCodec('libx264')
 				.videoBitrate('1024k')
