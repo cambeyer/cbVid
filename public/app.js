@@ -400,7 +400,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.socket.emit('listtorrent', UserObj.getUser({ query: $rootScope.search.text, encryptedPhrase: EncryptService.encrypt('listtorrent') }));
 				$rootScope.staleQuery = $rootScope.search.text;
 			}
-		}, 2000);
+		}, 1000);
 	};
 })
 
