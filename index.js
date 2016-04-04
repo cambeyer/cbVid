@@ -649,7 +649,7 @@ var fetchTorrentList = function(query, socket) {
 		if (!err && results) {
 			var final = [];
 			for (var i = 0; i < results.list.length; i++) {
-				if (results.list[i].category == "TV" || results.list[i].category == "Movies") {
+				if ((results.list[i].category == "TV" || results.list[i].category == "Movies") && results.list[i].seeds > 5) {
 					final.push({title: results.list[i].title, magnet: results.list[i].torrentLink, hash: results.list[i].hash.toLowerCase()});
 				}
 			}
