@@ -11,6 +11,7 @@
     "fluent-ffmpeg": "^2.0.1",
     "fs-extra": "^0.16.3",
     "jsrp": "^0.2.0",
+    "kickass-so": "^0.1.1",
     "nedb": "^1.1.3",
     "node-cryptojs-aes": "^0.4.0",
     "parse-torrent": "^5.4.0",
@@ -18,7 +19,6 @@
     "readline": "^1.3.0",
     "send": "^0.13.0",
     "socket.io": "^1.3.5",
-    "torrent-project-api": "^1.0.4",
     "torrent-stream": "^1.0.0",
     "ytdl-core": "^0.7.5"
   }

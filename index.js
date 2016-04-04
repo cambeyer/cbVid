@@ -9,7 +9,7 @@ var send = require('send');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
-var tp = require('torrent-project-api');
+var kickass = require('kickass-so');
 var node_cryptojs = require('node-cryptojs-aes');
 var CryptoJS = node_cryptojs.CryptoJS;
 var ffmpeg = require('fluent-ffmpeg');
@@ -609,19 +609,6 @@ var encrypt = function(username, sessionNumber, text, disregardVerification, cal
 	});
 };
 
-var lookupByMagnet = function(magnet, callback) {
-	getMagnet(magnet, function(err, magnet) {
-		if (!err) {
-			var hash = getHash(magnet);
-			db.videos.findOne({ hash: hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
-				if (!err) {
-					callback(vidEntry);
-				}
-			});
-		}
-	});
-};
-
 var addTorrentStatus = function(list, callback) {
 	var count = 0;
 	for (var i = 0; i < list.length; i++) {
@@ -635,37 +622,33 @@ var addTorrentStatus = function(list, callback) {
 };
 
 var processStatus = function(list, pos, callback) {
-	tp.magnet(list[pos].hash, function (err, link) {
-		if (!err) {
-			list[pos].magnet = link;
-			lookupByMagnet(list[pos].magnet, function(vidEntry) {
-				if (vidEntry) {
-					var title = String(list[pos].title);
-					var magnet = String(list[pos].magnet);
-					list[pos] = vidEntry;
-					list[pos].title = title;
-					list[pos].magnet = magnet;
-					delete vidEntry.users;
-				}
-				callback();
-			});	
-		} else {
-			console.log("Error generating magnet");
-			callback();
+	db.videos.findOne({ hash: list[pos].hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
+		if (!err && vidEntry) {
+			var title = String(list[pos].title);
+			var magnet = String(list[pos].magnet);
+			list[pos] = vidEntry;
+			list[pos].title = title;
+			list[pos].magnet = magnet;
+			delete vidEntry.users;
 		}
+		callback();
 	});
 };
 
 var fetchTorrentList = function(query, socket) {
-	tp.search(query, {
-	  limit: 100,
-	  order: 'speed',
-	  filter: 'video'
-	}, function (err, results) {
+	kickass({
+		search: query,
+		//category: 'movies',
+		//page: 0,
+		field: 'seeders',
+		sorder: 'desc'},
+	function (err, results) {
 		if (!err && results) {
 			var final = [];
-			for (var i = 0; i < results.torrents.length; i++) {
-				final.push({title: results[i].title, hash: results[i].hash});
+			for (var i = 0; i < results.list.length; i++) {
+				if (results.list[i].category == "TV" || results.list[i].category == "Movies") {
+					final.push({title: results.list[i].title, magnet: results.list[i].torrentLink, hash: results.list[i].hash.toLowerCase()});
+				}
 			}
 			addTorrentStatus(final, function() {
 				socket.emit('listtorrent', final);
