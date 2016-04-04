@@ -6,18 +6,16 @@ var readLine = require('readline');
 var fs = require('fs-extra');
 var http = require('http').Server(app);
 var send = require('send');
-var request = require('request');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
+var tp = require('torrent-project-api');
 var node_cryptojs = require('node-cryptojs-aes');
 var CryptoJS = node_cryptojs.CryptoJS;
 var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-
-var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
 
 var DB_EXT = '.db';
 
@@ -27,7 +25,7 @@ var SEQUENCE_SEPARATOR = "_";
 var NO_PROGRESS_INITIAL_TIMEOUT = 60; //seconds
 var NO_PROGRESS_RECURRING_TIMEOUT = 60 * 60; //seconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
-var DAYS_RETENTION_PERIOD = 10; //days
+var DAYS_RETENTION_PERIOD = 20; //days
 var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
 
 //set the directory where files are served from and uploaded to
@@ -637,46 +635,43 @@ var addTorrentStatus = function(list, callback) {
 };
 
 var processStatus = function(list, pos, callback) {
-	lookupByMagnet(list[pos].magnet, function(vidEntry) {
-		if (vidEntry) {
-			var title = String(list[pos].title);
-			var magnet = String(list[pos].magnet);
-			list[pos] = vidEntry;
-			list[pos].title = title;
-			list[pos].magnet = magnet;
-			delete vidEntry.users;
+	tp.magnet(list[pos].hash, function (err, link) {
+		if (!err) {
+			list[pos].magnet = link;
+			lookupByMagnet(list[pos].magnet, function(vidEntry) {
+				if (vidEntry) {
+					var title = String(list[pos].title);
+					var magnet = String(list[pos].magnet);
+					list[pos] = vidEntry;
+					list[pos].title = title;
+					list[pos].magnet = magnet;
+					delete vidEntry.users;
+				}
+				callback();
+			});	
+		} else {
+			console.log("Error generating magnet");
+			callback();
 		}
-		callback();
-	});	
+	});
 };
 
-//https://rarbg.to/torrents.php?category=18;41&search=better+call+saul&order=seeders&by=DESC
-
 var fetchTorrentList = function(query, socket) {
-	request(torrentAPI + "get_token=get_token", function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
-			//console.log(torURL);
-			request(torURL, function (error, response, body) {
-				if (!error && response.statusCode == 200) {
-					var results = JSON.parse(body).torrent_results;
-					var final = [];
-					if (results) {
-						for (var i = 0; i < results.length; i++) {
-							final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
-						}
-					} else {
-						if (JSON.parse(body).error_code && JSON.parse(body).error_code !== 20) {
-							console.log(body);
-						}
-					}
-					addTorrentStatus(final, function() {
-						socket.emit('listtorrent', final);
-					});
-				}
+	tp.search(query, {
+	  limit: 100,
+	  order: 'speed',
+	  filter: 'video'
+	}, function (err, results) {
+		if (!err && results) {
+			var final = [];
+			for (var i = 0; i < results.torrents.length; i++) {
+				final.push({title: results[i].title, hash: results[i].hash});
+			}
+			addTorrentStatus(final, function() {
+				socket.emit('listtorrent', final);
 			});
 		} else {
-			console.log("Torrent search error: " + error);
+			console.log("Error fetching torrent list for " + query + ": " + err);
 		}
 	});
 };
