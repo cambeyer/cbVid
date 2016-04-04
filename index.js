@@ -384,7 +384,8 @@ var getHash = function(magnet) {
 var getTitle = function(magnet) {
 	var title;
 	try {
-		title = decodeURIComponent(magnet.split("&dn=")[1].split("&")[0]);
+		title = magnet.split("&dn=")[1].split("&")[0].replace(/\+/g, '%20');
+		title = decodeURIComponent(title);
 	} catch (e) {}
 	if (!title) {
 		return "";
