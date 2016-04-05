@@ -767,6 +767,8 @@ io.on('connection', function (socket) {
 		decrypt(viewReq.username, viewReq.session, viewReq.encryptedPhrase, false, function(encryptedPhrase) {
 			if (encryptedPhrase == "myview") {
 				sendMyView(viewReq.username, socket);
+			} else {
+				socket.emit('verifyok', 'false');
 			}
 		});
 	});
