@@ -24,6 +24,8 @@ var TS_EXT = ".ts";
 var SEQUENCE_SEPARATOR = "_";
 var NO_PROGRESS_INITIAL_TIMEOUT = 60; //seconds
 var NO_PROGRESS_RECURRING_TIMEOUT = 60 * 60; //seconds
+var MAX_MAGNET_RETRIES = 3;
+var MAGNET_RETRY_DELAY = 500; //milliseconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
 var DAYS_RETENTION_PERIOD = 20; //days
 var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
@@ -363,10 +365,21 @@ app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
 	});
 });
 
-var getMagnet = function(source, callback) {
-	parseTorrent.remote(source, function (err, parsedTorrent) {
-		callback(err, parseTorrent.toMagnetURI(parsedTorrent));
-	});
+var getMagnet = function(source, callback, num) {
+	if (!num || num < MAX_MAGNET_RETRIES) {
+		parseTorrent.remote(source, function (err, parsedTorrent) {
+			if (err) {
+				//console.log("Error getting manget: " + err);
+				setTimeout(function() {
+					getMagnet(source, callback, num ? num + 1 : 1);
+				}, MAGNET_RETRY_DELAY);
+			} else {
+				callback(parseTorrent.toMagnetURI(parsedTorrent));
+			}
+		});
+	} else {
+		console.log("Maximum retries exceeded; cannot fetch magnet");
+	}
 };
 
 var getHash = function(magnet) {
@@ -455,39 +468,35 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 		var uniqueIdentifier = req.params.username + req.params.session;
 		if (magnet) {
 			try {
-				getMagnet(magnet, function(err, magnet) {
-					if (!err) {
-						var hash = getHash(magnet);
-						if (!needingResponse[hash]) {
-							needingResponse[hash] = {};
-						}
-						needingResponse[hash][uniqueIdentifier] = res;
-						db.videos.findOne({ hash: hash }, function (err, vidEntry) {
-							if (!err) {
-								if (vidEntry) {
-									if (vidEntry.terminated) {
-										db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
-											if (!err && numRemoved == 1) {
-												startTorrent(hash, magnet, req.params.username);
-											} else {
-												console.log("Could not remove terminated entry");
-											}
-										});
-									} else {
-										//entry already exists so try to fulfill the request straightaway
-										broadcastAccess(hash, req.params.username, function() {
-											trySendPlayListFile(hash, uniqueIdentifier);
-										});
-									}
-								} else {
-									//first time this has been requested
-									startTorrent(hash, magnet, req.params.username);
-								}
-							}
-						});
-					} else {
-						console.log("Error getting magnet from input");
+				getMagnet(magnet, function(magnet) {
+					var hash = getHash(magnet);
+					if (!needingResponse[hash]) {
+						needingResponse[hash] = {};
 					}
+					needingResponse[hash][uniqueIdentifier] = res;
+					db.videos.findOne({ hash: hash }, function (err, vidEntry) {
+						if (!err) {
+							if (vidEntry) {
+								if (vidEntry.terminated) {
+									db.videos.remove({ hash: hash }, {}, function(err, numRemoved) {
+										if (!err && numRemoved == 1) {
+											startTorrent(hash, magnet, req.params.username);
+										} else {
+											console.log("Could not remove terminated entry");
+										}
+									});
+								} else {
+									//entry already exists so try to fulfill the request straightaway
+									broadcastAccess(hash, req.params.username, function() {
+										trySendPlayListFile(hash, uniqueIdentifier);
+									});
+								}
+							} else {
+								//first time this has been requested
+								startTorrent(hash, magnet, req.params.username);
+							}
+						}
+					});
 				});
 			} catch (e) {
 				console.log("Abandoned torrent due to an error");
