@@ -59,7 +59,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.playTorrent = function(torrent) {
 		$rootScope.activeVideo = $.extend(true, {}, torrent);
 		$rootScope.setTitle(torrent.title);
-		$state.transitionTo("cbvid.list", { hash: torrent.hash }, { notify: false });
+		$state.transitionTo("cbvid.list", { hash: torrent.hash }, { notify: false, reload: false });
 		$rootScope.setVideo();
 	};
 	
