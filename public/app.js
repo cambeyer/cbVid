@@ -19,7 +19,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			templateUrl: 'list.html',
 			controller: function ($stateParams, $rootScope) {
 				$rootScope.playerReady = false;
-				if (!$rootScope.activeVideo || $rootScope.activeVideo.hash != $stateParams.hash) {
+				$rootScope.playerLoading = false;
+				if (!$stateParams.hash) {
+					$rootScope.activeVideo = undefined;
+				} else if (!$rootScope.activeVideo || $rootScope.activeVideo.hash != $stateParams.hash) {
 					$rootScope.playTorrent({ magnet: $stateParams.hash, hash: $stateParams.hash, title: "[Loading]" });
 				}
 			}
