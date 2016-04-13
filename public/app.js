@@ -15,8 +15,14 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
         })
 
 		.state('cbvid.list', {
-			url: '/videos/',
-			templateUrl: 'list.html'
+			url: '/videos/:hash',
+			templateUrl: 'list.html',
+			controller: function ($stateParams, $rootScope) {
+				$rootScope.playerReady = false;
+				if (!$rootScope.activeVideo || $rootScope.activeVideo.hash != $stateParams.hash) {
+					$rootScope.playTorrent({ magnet: $stateParams.hash, hash: $stateParams.hash, title: "[Loading]" });
+				}
+			}
 		});
 
     $urlRouterProvider.otherwise('/auth');
@@ -36,6 +42,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	
 	$rootScope.activeVideo;
 	$rootScope.player;
+	$rootScope.playerReady = false;
+	$rootScope.playerLoading = false;
 	
 	$rootScope.torrentList = [];
 	$rootScope.staleQuery = "";
@@ -45,28 +53,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.title = title + " - cbVid";
 	};
 	
-	$rootScope.getHash = function(magnet) {
-		var hash;
-		try {
-			hash = magnet.split("btih:")[1].split("&")[0];
-		} catch (e) {}
-		if (!hash) {
-			return magnet;
-		} else {
-			return hash;
-		}
-	};
-	
-	$rootScope.pasteTorrent = function() {
-		var magnet = prompt("Please paste magnet link to stream");
-		if (magnet) {
-			$rootScope.playTorrent({ magnet: magnet, hash: $rootScope.getHash(magnet) });
-		}
-	};
-	
 	$rootScope.playTorrent = function(torrent) {
 		$rootScope.activeVideo = $.extend(true, {}, torrent);
 		$rootScope.setTitle(torrent.title);
+		$state.transitionTo("cbvid.list", { hash: torrent.hash }, { notify: false });
 		$rootScope.setVideo();
 	};
 	
@@ -78,7 +68,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 
 	$rootScope.setVideo = function () {
-		if (!$rootScope.player) {
+		if (!$rootScope.playerReady && !$rootScope.playerLoading) {
+			$rootScope.playerLoading = true;
+			if ($rootScope.player) {
+				$rootScope.player.dispose();
+			}
 			/*global videojs*/
 			videojs("video", {
 				plugins: {
@@ -87,6 +81,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 					}
 				}
 			}, function(){
+				$rootScope.playerLoading = false;
+				$rootScope.playerReady = true;
 				$rootScope.player = this;
 				$rootScope.player.on('loadedmetadata', function() {
 					//$rootScope.player.controls(true);

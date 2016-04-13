@@ -488,6 +488,8 @@ app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
 								} else {
 									//entry already exists so try to fulfill the request straightaway
 									broadcastAccess(hash, req.params.username, function() {
+										delete vidEntry.users;
+										io.emit('status', vidEntry);
 										trySendPlayListFile(hash, uniqueIdentifier);
 									});
 								}
