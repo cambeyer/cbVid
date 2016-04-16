@@ -70,6 +70,14 @@ html, body {
     height: auto;
 }
 
+#video {
+    line-height: 0;
+}
+
+.vjs-slider {
+    line-height: initial;
+}
+
 .vjs-fullscreen .vjs-tech {
     height: 100% !important;
 }
