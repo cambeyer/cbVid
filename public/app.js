@@ -31,11 +31,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
     $urlRouterProvider.otherwise('/auth');
 })
 
-.run(function($rootScope, $localStorage, $state, $sce, EncryptService, UserObj) {
+.run(function($rootScope, $localStorage, $state, EncryptService, UserObj) {
 	$rootScope.$storage = $localStorage;
 	$rootScope.$storage.authed;
 	$rootScope.title;
 	/*global io*/
+	$rootScope.$storage.sequenceNumber = 1;
+	
 	$rootScope.socket = io();
 	$rootScope.pendingState;
 	$rootScope.pendingParameters;
@@ -77,6 +79,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.player.dispose();
 			}
 			/*global videojs*/
+			videojs.Hls.xhr.beforeRequest = function(options) {
+				if (options.uri.indexOf(".ts") > 0) {
+					var lastSlash = options.uri.lastIndexOf("/");
+					options.uri = options.uri.substring(0, lastSlash + 1) + btoa(EncryptService.encrypt("" + $rootScope.$storage.sequenceNumber++)) + options.uri.substring(lastSlash, options.uri.length);
+				}
+				return options;
+			};
 			videojs("video", {
 				plugins: {
 					chromecast: {

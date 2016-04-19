@@ -346,21 +346,27 @@ function checkPlaylistCount(stream, cb) {
 	});
 }
 
-app.get('/:username/:session/:magnet/:filename' + TS_EXT, function (req, res){
-	decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
-		var filename = req.params.filename;
-		var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
-		//var sequenceNumber = parseInt(filename.substring(filename.indexOf(SEQUENCE_SEPARATOR) + SEQUENCE_SEPARATOR.length, filename.length), 10);
-		if (magnet) {
-			try {
-				var file = path.resolve(dir + hash + "/", filename + TS_EXT);
-				send(req, file, {maxAge: '10h'})
-					.on('headers', function(res, path, stat) {
-						res.setHeader('Content-Type', 'video/mp2t');
-					})
-					.on('end', function() {})
-					.pipe(res);
-			} catch (e) {}
+app.get('/:username/:session/:magnet/:sequence/:filename' + TS_EXT, function (req, res){
+	decrypt(req.params.username, req.params.session, atob(req.params.sequence), false, function(sequenceNumber) {
+		if (sequenceNumber) { //do some authorization that the sequence number went up for that session
+			decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
+				var filename = req.params.filename;
+				var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
+				//var sequenceNumber = parseInt(filename.substring(filename.indexOf(SEQUENCE_SEPARATOR) + SEQUENCE_SEPARATOR.length, filename.length), 10);
+				if (magnet) {
+					try {
+						var file = path.resolve(dir + hash + "/", filename + TS_EXT);
+						send(req, file, {maxAge: '10h'})
+							.on('headers', function(res) {
+								res.setHeader('Content-Type', 'video/mp2t');
+							})
+							.on('end', function() {})
+							.pipe(res);
+					} catch (e) {}
+				}
+			});
+		} else {
+			res.send(401);
 		}
 	});
 });
@@ -463,7 +469,7 @@ var broadcastRemoval = function(hash, username, callback) {
 
 };
 
-app.get('/:username/:session/:magnet/stream' + M3U8_EXT, function (req, res){
+app.get('/:username/:session/:magnet/:stream' + M3U8_EXT, function (req, res){
 	decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
 		var uniqueIdentifier = req.params.username + req.params.session;
 		if (magnet) {
