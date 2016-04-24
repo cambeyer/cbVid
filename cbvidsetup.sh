@@ -32,6 +32,9 @@ sudo rm -rf ./node_modules/fluent-ffmpeg/
 git submodule add -f git://github.com/schaermu/node-fluent-ffmpeg.git node_modules/fluent-ffmpeg
 git pull && git submodule init && git submodule update && git submodule status
 cd node_modules/fluent-ffmpeg/
+#bump dependencies
+sudo npm install -g npm-check-updates
+ncu -u
 npm install
 #add the cloud9 key for authorized login
 sudo echo "KEY HERE" >> ~/.ssh/authorized_keys

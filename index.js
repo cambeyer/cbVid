@@ -348,7 +348,7 @@ function checkPlaylistCount(stream, cb) {
 
 app.get('/:username/:session/:magnet/:sequence/:filename' + TS_EXT, function (req, res){
 	decrypt(req.params.username, req.params.session, atob(req.params.sequence), false, function(sequenceNumber) {
-		if (sequenceNumber) { //do some authorization that the sequence number went up for that session
+		//if (sequenceNumber) { //do some authorization that the sequence number went up for that session
 			decrypt(req.params.username, req.params.session, atob(req.params.magnet), false, function(magnet) {
 				var filename = req.params.filename;
 				var hash = filename.substr(0, filename.indexOf(SEQUENCE_SEPARATOR));
@@ -365,9 +365,9 @@ app.get('/:username/:session/:magnet/:sequence/:filename' + TS_EXT, function (re
 					} catch (e) {}
 				}
 			});
-		} else {
-			res.send(401);
-		}
+		//} else {
+		//	res.sendStatus(401);
+		//}
 	});
 });
 
