@@ -36,8 +36,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.$storage.authed;
 	$rootScope.title;
 	/*global io*/
-	$rootScope.$storage.sequenceNumber = 1;
-	
 	$rootScope.socket = io();
 	$rootScope.pendingState;
 	$rootScope.pendingParameters;
@@ -79,13 +77,6 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				$rootScope.player.dispose();
 			}
 			/*global videojs*/
-			videojs.Hls.xhr.beforeRequest = function(options) {
-				if (options.uri.indexOf(".ts") > 0) {
-					var lastSlash = options.uri.lastIndexOf("/");
-					options.uri = options.uri.substring(0, lastSlash + 1) + btoa(EncryptService.encrypt("" + $rootScope.$storage.sequenceNumber++)) + options.uri.substring(lastSlash, options.uri.length);
-				}
-				return options;
-			};
 			videojs("video", {
 				plugins: {
 					chromecast: {
@@ -102,6 +93,11 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 						$rootScope.player.play();
 					}
 				});
+				/*
+				$rootScope.player.on('timeupdate', function() {
+					console.log($rootScope.player.currentTime());
+				});
+				*/
 				$rootScope.setVideo();
 			});
 		} else {
@@ -249,7 +245,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		});
 	});
 
-	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) {
+	$rootScope.$on('$stateChangeStart', function(event, toState, toParams) {
 		//console.log(fromState.name + " to " + toState.name);
 		if (toState.name !== 'auth') {
 			if (!$rootScope.$storage.authed) {
@@ -271,7 +267,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	});
 })
 
-.controller('authController', function($scope, $rootScope, $document, $state, EncryptService) {
+.controller('authController', function($scope, $rootScope) {
 	$rootScope.setTitle("Login");
 	$scope.loading = false;
 	$scope.confirmPassword = false;
@@ -368,7 +364,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 })
 
-.controller('containerController', function($scope, $rootScope, $modal, $state, $timeout, EncryptService, UserObj) {
+.controller('containerController', function($scope, $rootScope, $timeout, EncryptService, UserObj) {
 	var timer;
 	
 	if ($rootScope.activeVideo) {
