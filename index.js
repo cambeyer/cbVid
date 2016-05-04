@@ -176,8 +176,8 @@ var transcode = function (stream, hash, engine) {
 						}
 		    		})
 		    		.on('error', function (err, stdout, stderr) {
-						console.log("Probe transcoding issue: " + err);
-						console.log(stderr);
+						//console.log("Probe transcoding issue: " + err);
+						//console.log(stderr);
 					})
 		    		.save(testFile);
 		    	
@@ -253,7 +253,7 @@ var transcode = function (stream, hash, engine) {
 					})
 					.on('error', function (err, stdout, stderr) {
 						console.log("Transcoding issue: " + err);
-						console.log(stderr);
+						//console.log(stderr);
 					})
 					.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 					
@@ -268,7 +268,6 @@ var killProgress = function(message, hash, command, probeCommand, engine) {
 	if (command) { command.kill(); }
 	if (probeCommand) { probeCommand.kill(); }
 	engine.remove(false, function() {
-		deleteFolderRecursive(dir + hash);
 		db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 			if (err || !updatedDocs) {
 				console.log("Could not update video to terminated status");
@@ -276,6 +275,7 @@ var killProgress = function(message, hash, command, probeCommand, engine) {
 				delete updatedDocs.users;
 				io.emit('status', updatedDocs);
 			}
+			deleteFolderRecursive(dir + hash);
 		});
 		for (var uniqueIdentifier in needingResponse[hash]) {
 			needingResponse[hash][uniqueIdentifier].end();
