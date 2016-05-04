@@ -209,7 +209,7 @@ var transcode = function (stream, hash, engine) {
 					clearTimeout(timeout);
 					engine.remove(false, function() {
 						db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-							if (err) {
+							if (err || !updatedDocs) {
 								console.log("Could not update video to non-torrenting status");
 							} else {
 								delete updatedDocs.users;
@@ -233,7 +233,7 @@ var transcode = function (stream, hash, engine) {
 									var remaining = ((secondsOfTimeSpentProcessing*totalDuration)/secondsOfMovieProcessed) - secondsOfTimeSpentProcessing - totalDuration;
 									//var ratio = (secondsOfTimeSpentProcessing/secondsOfMovieProcessed)*((totalDuration - secondsOfMovieProcessed) / totalDuration);
 									db.videos.update({ hash: hash }, { $set: { remaining: remaining } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-										if (!err) {
+										if (!err && updatedDocs) {
 											delete updatedDocs.users;
 											io.emit('status', updatedDocs);
 										} else {
@@ -268,7 +268,7 @@ var killProgress = function(message, hash, command, probeCommand, engine) {
 	engine.remove(false, function() {
 		deleteFolderRecursive(dir + hash);
 		db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
-			if (err) {
+			if (err || !updatedDocs) {
 				console.log("Could not update video to terminated status");
 			} else {
 				delete updatedDocs.users;
@@ -666,6 +666,7 @@ var fetchTorrentList = function(query, socket) {
 						}
 					}
 				}
+				console.log("Fetched some results");
 				kickass({
 					search: query,
 					field: 'seeders',
@@ -691,6 +692,8 @@ var fetchTorrentList = function(query, socket) {
 					});
 				});
 			});
+		} else {
+			console.log("Error fetching access token");
 		}
 	});
 };
