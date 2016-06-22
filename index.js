@@ -603,23 +603,12 @@ var decrypt = function (username, sessionNumber, text, disregardVerification, ca
 	});
 };
 
-var encryptedPhrases = {};
-
 var encrypt = function(username, sessionNumber, text, disregardVerification, callback) {
 	getKey(username, sessionNumber, function(key) {
 		if (key) {
 			try {
 				if (disregardVerification || key.verified) {
-					if (!encryptedPhrases[username]) {
-						encryptedPhrases[username] = {};
-					}
-					if (!encryptedPhrases[username][sessionNumber]) {
-						encryptedPhrases[username][sessionNumber] = {};
-					}
-					if (!encryptedPhrases[username][sessionNumber][text]) {
-						encryptedPhrases[username][sessionNumber][text] = CryptoJS.AES.encrypt(text, key.content).toString();
-					}
-					callback(encryptedPhrases[username][sessionNumber][text]);
+					callback(CryptoJS.AES.encrypt(text, key.content).toString());
 				}
 			} catch (e) { }
 		} else {

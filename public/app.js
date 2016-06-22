@@ -409,17 +409,9 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 })
 
 .service('EncryptService', function ($rootScope) {
-    this.encryptedPhrases;
-    this.reset = function() {
-    	this.encryptedPhrases = {};
-    };
-    this.reset();
 	this.encrypt = function (text) {
-		if (!this.encryptedPhrases[text]) {
-		    /*global CryptoJS*/
-			this.encryptedPhrases[text] = CryptoJS.AES.encrypt(text, $rootScope.$storage.secret).toString();
-		}
-		return this.encryptedPhrases[text];
+		/*global CryptoJS*/
+		return CryptoJS.AES.encrypt(text, $rootScope.$storage.secret).toString();
 	};
 })
 
