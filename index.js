@@ -207,7 +207,7 @@ var transcode = function (stream, hash, engine) {
 					})
 					.on('progress', function(progress) {
 						clearTimeout(timeout);
-						timeout = setTimeout(function() { killProgress("No progress has been made in an hour; killing the process", hash, command, probeCommand, engine); }, NO_PROGRESS_RECURRING_TIMEOUT * 1000);
+						timeout = setTimeout(function() { killProgress("No progress has been made in an hour; killing the process", hash, command, engine); }, NO_PROGRESS_RECURRING_TIMEOUT * 1000);
 						var now = Date.now();
 						if (!lastUpdate || (now - lastUpdate) / 1000 > DB_UPDATE_FREQUENCY) {
 							lastUpdate = Date.now();
@@ -243,16 +243,15 @@ var transcode = function (stream, hash, engine) {
 					})
 					.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 					
-				timeout = setTimeout(function() { killProgress("No initial progress has been made; killing the process", hash, command, probeCommand, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
+				timeout = setTimeout(function() { killProgress("No initial progress has been made; killing the process", hash, command, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 	    	});
 	    }
 	});
 };
 
-var killProgress = function(message, hash, command, probeCommand, engine) {
+var killProgress = function(message, hash, command, engine) {
 	console.log(message);
 	if (command) { command.kill(); }
-	if (probeCommand) { probeCommand.kill(); }
 	engine.remove(false, function() {
 		engine.destroy();
 		db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
