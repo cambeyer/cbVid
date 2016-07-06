@@ -149,7 +149,7 @@ var transcode = function (stream, hash, engine) {
 	    } else {
 			db.videos.update({ hash: hash }, { $unset: { ignoreFolder: 1 } }, {}, function () {
 		    	cleanup();
-		    	var baseCommand = ffmpeg(stream)
+		    	var command = ffmpeg(stream)
 		    		.videoCodec('libx264')
 					.videoBitrate('1024k')
 		    		.audioCodec('aac')
@@ -159,27 +159,7 @@ var transcode = function (stream, hash, engine) {
 		    		.audioChannels(2)
 		    		.outputOption('-analyzeduration 2147483647')
 					.outputOption('-probesize 2147483647')
-					.outputOption('-pix_fmt yuv420p');
-		    	
-		    	var testFile = dir + hash + "/test.mp4";
-		    	var probeCommand = baseCommand.clone()
-					.format('mp4')
-					.duration("0.001")
-					.on('end', function(stdout, stderr) {
-						try {
-							fs.unlinkSync(testFile);
-			    			totalDuration = convertToSeconds(stderr.split("Duration: ")[1].split(",")[0]);
-						} catch (e) {
-							console.log("Error parsing duration from test file");
-						}
-		    		})
-		    		.on('error', function (err, stdout, stderr) {
-						//console.log("Probe transcoding issue: " + err);
-						//console.log(stderr);
-					})
-		    		.save(testFile);
-		    	
-		    	var command = baseCommand.clone()
+					.outputOption('-pix_fmt yuv420p') //base command to here
 					.addOptions([
 						'-sn',
 						'-async 1',
@@ -203,6 +183,13 @@ var transcode = function (stream, hash, engine) {
 					])
 					.on('start', function (cmdline) {
 						//console.log(cmdline);
+					})
+					.on('stderr', function(stderrLine) {
+						if (!totalDuration) {
+							try {
+								totalDuration = convertToSeconds(stderrLine.split("Duration: ")[1].split(",")[0]);
+							} catch (e) { }
+						}
 					})
 					.on('end', function() {
 						clearTimeout(timeout);
