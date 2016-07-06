@@ -6,7 +6,6 @@ var readLine = require('readline');
 var fs = require('fs-extra');
 var http = require('http').Server(app);
 var send = require('send');
-var request = require('request');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
@@ -17,8 +16,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-
-var torrentAPI = "https://torrentapi.org/pubapi_v2.php?app_id=cbvid&";
+var tapi = require('torrentapi-wrapper');
 
 var DB_EXT = '.db';
 
@@ -209,6 +207,7 @@ var transcode = function (stream, hash, engine) {
 					.on('end', function() {
 						clearTimeout(timeout);
 						engine.remove(false, function() {
+							engine.destroy();
 							db.videos.update({ hash: hash }, { $set: { torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 								if (err || !updatedDocs) {
 									console.log("Could not update video to non-torrenting status");
@@ -268,6 +267,7 @@ var killProgress = function(message, hash, command, probeCommand, engine) {
 	if (command) { command.kill(); }
 	if (probeCommand) { probeCommand.kill(); }
 	engine.remove(false, function() {
+		engine.destroy();
 		db.videos.update({ hash: hash }, { $set: { terminated: true, torrenting: false }, $unset: { remaining: 1 } }, { returnUpdatedDocs: true }, function (err, numAffected, updatedDocs) {
 			if (err || !updatedDocs) {
 				console.log("Could not update video to terminated status");
@@ -644,48 +644,59 @@ var processStatus = function(list, pos, callback) {
 };
 
 var fetchTorrentList = function(query, socket) {
-	request(torrentAPI + "get_token=get_token", function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			var torURL = torrentAPI + "token=" + JSON.parse(body).token + "&search_string=" + query + "&mode=search&min_seeders=5&limit=100&category=1;14;48;17;44;45;42;18;41&sort=seeders&format=json_extended";
-			request(torURL, function (error, response, body) {
-				var final = [];
-				if (!error && response.statusCode == 200) {
-					var results = JSON.parse(body).torrent_results;
-					if (results) {
-						for (var i = 0; i < results.length; i++) {
-							final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
-						}
-					}
-				}
-				console.log("Fetched some results");
-				kickass({
-					search: query,
-					field: 'seeders',
-					sorder: 'desc'},
-				function (err, results) {
-					if (!err && results) {
-						for (var i = 0; i < results.list.length; i++) {
-							var category = results.list[i].category;
-							if ((category == "TV" || category == "Movies") && results.list[i].seeds > 5) {
-								var resHash = results.list[i].hash.toLowerCase();
-								for (var j = 0; j < final.length; j++) {
-									if (final[j].hash == resHash) {
-										final.splice(j, 1);
-										break;
-									}
-								}
-								final.push({title: results.list[i].title.replace(/\&amp;/g,'&'), magnet: results.list[i].torrentLink, hash: resHash});
+	tapi.search('cbvid', {
+		query: query,
+		limit: 100,
+		category: '1;14;48;17;44;45;42;18;41',
+		sort: 'seeders'
+	}).then(function (results){
+		fetchTorrentList2(query, socket, results);
+	}).catch(function (err){
+		console.log("Error while fetching TorrentAPI results: " + err);
+		fetchTorrentList2(query, socket);
+	});
+};
+
+var fetchTorrentList2 = function(query, socket, results) {
+	var final = [];
+	if (results && results.length > 0) {
+		for (var i = 0; i < results.length; i++) {
+			final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
+		}
+		console.log("Fetched some results from TorrentAPI");
+	} else {
+		console.log("No results fetched from TorrentAPI");
+	}
+	kickass({
+		search: query,
+		field: 'seeders',
+		sorder: 'desc'},
+	function (err, results) {
+		if (!err) {
+			if (results && results.list && results.list.length > 0) {
+				console.log("Fetched some results from Kickass");
+				for (var i = 0; i < results.list.length; i++) {
+					var category = results.list[i].category;
+					if ((category == "TV" || category == "Movies") && results.list[i].seeds > 5) {
+						var resHash = results.list[i].hash.toLowerCase();
+						for (var j = 0; j < final.length; j++) {
+							if (final[j].hash == resHash) {
+								final.splice(j, 1);
+								break;
 							}
 						}
+						final.push({title: results.list[i].title.replace(/\&amp;/g,'&'), magnet: results.list[i].torrentLink, hash: resHash});
 					}
-					addTorrentStatus(final, function() {
-						socket.emit('listtorrent', final);
-					});
-				});
-			});
+				}
+			} else {
+				console.log("No results fetched from Kickass");
+			}
 		} else {
-			console.log("Error fetching access token");
+			console.log("Error while fetching Kickass results: " + err);
 		}
+		addTorrentStatus(final, function() {
+			socket.emit('listtorrent', final);
+		});
 	});
 };
 

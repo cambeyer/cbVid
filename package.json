@@ -9,7 +9,7 @@
     "crypto": "^0.0.3",
     "express": "^4.14.0",
     "fluent-ffmpeg": "^2.1.0",
-    "fs-extra": "^0.28.0",
+    "fs-extra": "^0.30.0",
     "jsrp": "^0.2.0",
     "kickass-so": "^0.1.1",
     "nedb": "^1.1.3",
@@ -17,10 +17,10 @@
     "parse-torrent": "^5.8.0",
     "path": "^0.12.7",
     "readline": "^1.3.0",
-    "request": "^2.72.0",
-    "send": "^0.13.0",
+    "send": "^0.14.1",
     "socket.io": "^1.4.8",
     "torrent-stream": "^1.0.3",
+    "torrentapi-wrapper": "^0.0.2",
     "ytdl-core": "^0.7.16"
   }
 }
