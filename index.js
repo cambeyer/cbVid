@@ -272,6 +272,7 @@ var killProgress = function(message, hash, command, engine) {
 };
 
 var convertToSeconds = function(timemark) {
+	console.log("Duration: " + timemark);
 	var tt = timemark.split(":");
 	return tt[0]*3600 + tt[1]*60 + tt[2]*1;
 };
