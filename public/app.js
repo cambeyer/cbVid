@@ -42,6 +42,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.search = {
 		text: ''
 	};
+	$rootScope.searchLoading = false;
 	
 	$rootScope.activeVideo;
 	$rootScope.player;
@@ -171,6 +172,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 
 	$rootScope.socket.on('listtorrent', function (torrentList) {
 		$rootScope.$apply(function() {
+			$rootScope.searchLoading = false;
 			$rootScope.torrentList = torrentList;
 		});
 	});
@@ -375,6 +377,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.search.text = "";
 		$rootScope.staleQuery = "";
 		$rootScope.torrentList = [];
+		$rootScope.searchLoading = false;
 		$rootScope.socket.emit('myview', UserObj.getUser({ encryptedPhrase: EncryptService.encrypt('myview') }));
 	};
 	
@@ -387,19 +390,22 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 
 	$scope.searchtor = function() {
+		$timeout.cancel(timer);
 		if ($rootScope.search.text) {
 			$rootScope.isInMyView = false;
+			if (!$rootScope.staleQuery || ($rootScope.staleQuery !== $rootScope.search.text)) {
+				$rootScope.searchLoading = true;
+			}
 		} else {
 			$scope.requestMyView();
 		}
-		$timeout.cancel(timer);
-		if ($rootScope.staleQuery !== $rootScope.search.text) {
-			$rootScope.torrentList = [];
-		}
 		timer = $timeout(function() {
-			if (!$rootScope.staleQuery || $rootScope.staleQuery !== $rootScope.search.text) {
+			if ($rootScope.search.text && (!$rootScope.staleQuery || ($rootScope.staleQuery !== $rootScope.search.text))) {
+				$rootScope.torrentList = [];
 				$rootScope.socket.emit('listtorrent', UserObj.getUser({ query: $rootScope.search.text, encryptedPhrase: EncryptService.encrypt('listtorrent') }));
 				$rootScope.staleQuery = $rootScope.search.text;
+			} else {
+				$rootScope.searchLoading = false;
 			}
 		}, 2000);
 	};

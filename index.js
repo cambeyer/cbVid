@@ -272,7 +272,7 @@ var killProgress = function(message, hash, command, engine) {
 };
 
 var convertToSeconds = function(timemark) {
-	console.log("Duration: " + timemark);
+	//console.log("Duration: " + timemark);
 	var tt = timemark.split(":");
 	return tt[0]*3600 + tt[1]*60 + tt[2]*1;
 };
@@ -606,6 +606,9 @@ var encrypt = function(username, sessionNumber, text, disregardVerification, cal
 
 var addTorrentStatus = function(list, callback) {
 	var count = 0;
+	if (list.length == 0) {
+		callback();
+	}
 	for (var i = 0; i < list.length; i++) {
 		processStatus(list, i, function() {
 			count++;
