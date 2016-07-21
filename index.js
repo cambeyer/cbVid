@@ -16,7 +16,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-var tapi = require('torrentapi-wrapper');
+var tp = require('torrent-project-api');
 
 var DB_EXT = '.db';
 
@@ -613,6 +613,12 @@ var addTorrentStatus = function(list, callback) {
 		processStatus(list, i, function() {
 			count++;
 			if (count == list.length) {
+				for (var j = 0; j < list.length; j++) {
+					if (!list[j].magnet) {
+						list.splice(j, 1);
+						j--;
+					}
+				}
 				callback();
 			}
 		});
@@ -620,69 +626,38 @@ var addTorrentStatus = function(list, callback) {
 };
 
 var processStatus = function(list, pos, callback) {
-	db.videos.findOne({ hash: list[pos].hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
-		if (!err && vidEntry) {
-			var title = String(list[pos].title);
-			var magnet = String(list[pos].magnet);
-			list[pos] = vidEntry;
-			list[pos].title = title;
-			list[pos].magnet = magnet;
-			delete vidEntry.users;
-		}
-		callback();
+	tp.magnet(list[pos].magnet, function (err, magnet) {
+		list[pos].magnet = magnet;
+		db.videos.findOne({ hash: list[pos].hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
+			if (!err && vidEntry) {
+				var title = String(list[pos].title);
+				var magnet = String(list[pos].magnet);
+				list[pos] = vidEntry;
+				list[pos].title = title;
+				list[pos].magnet = magnet;
+				delete vidEntry.users;
+			}
+			callback();
+		});
 	});
 };
 
 var fetchTorrentList = function(query, socket) {
-	tapi.search('cbvid', {
-		query: query,
-		limit: 100,
-		category: '1;14;48;17;44;45;42;18;41',
-		sort: 'seeders'
-	}).then(function (results){
-		fetchTorrentList2(query, socket, results);
-	}).catch(function (err){
-		console.log("Error while fetching TorrentAPI results: " + err);
-		fetchTorrentList2(query, socket);
-	});
-};
-
-var fetchTorrentList2 = function(query, socket, results) {
 	var final = [];
-	if (results && results.length > 0) {
-		for (var i = 0; i < results.length; i++) {
-			final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
-		}
-		console.log("Fetched some results from TorrentAPI");
-	} else {
-		console.log("No results fetched from TorrentAPI");
-	}
-	kickass({
-		search: query,
-		field: 'seeders',
-		sorder: 'desc'},
-	function (err, results) {
+	tp.search(query, { limit: 100, order: 'best' }, function(err, results) {
 		if (!err) {
-			if (results && results.list && results.list.length > 0) {
-				console.log("Fetched some results from Kickass");
-				for (var i = 0; i < results.list.length; i++) {
-					var category = results.list[i].category;
-					if ((category == "TV" || category == "Movies") && results.list[i].seeds > 5) {
-						var resHash = results.list[i].hash.toLowerCase();
-						for (var j = 0; j < final.length; j++) {
-							if (final[j].hash == resHash) {
-								final.splice(j, 1);
-								break;
-							}
-						}
-						final.push({title: results.list[i].title.replace(/\&amp;/g,'&'), magnet: results.list[i].torrentLink, hash: resHash});
+			if (results && results.torrents && results.torrents.length > 0) {
+				for (var i = 0; i < results.torrents.length; i++) {
+					if (results.torrents[i].seeds > 5) {
+						final.push({title: results.torrents[i].title.replace(/\&amp;/g,'&'), magnet: results.torrents[i], hash: results.torrents[i].hash.toLowerCase()});
 					}
 				}
+				console.log("Fetched some results from TorrentProject");
 			} else {
-				console.log("No results fetched from Kickass");
+				console.log("No results fetched from TorrentProject");
 			}
 		} else {
-			console.log("Error while fetching Kickass results: " + err);
+			console.log("Error while fetching TorrentProject results: "+ err);
 		}
 		addTorrentStatus(final, function() {
 			socket.emit('listtorrent', final);
