@@ -511,7 +511,7 @@ var startTorrent = function(hash, magnet, username) {
 					dht: true,
 					tmp: __dirname
 				});
-				var timeout = setTimeout(function() { killProgress("Torrent engine cannot start; killing.", hash, null, null, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
+				var timeout = setTimeout(function() { killProgress("Torrent engine cannot start; killing.", hash, null, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 				engine.on('ready', function() {
 					clearTimeout(timeout);
 					if (engine.files.length > 0) {
