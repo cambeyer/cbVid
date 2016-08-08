@@ -9,7 +9,6 @@ var send = require('send');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
 var torrentStream = require('torrent-stream');
-var kickass = require('kickass-so');
 var node_cryptojs = require('node-cryptojs-aes');
 var CryptoJS = node_cryptojs.CryptoJS;
 var ffmpeg = require('fluent-ffmpeg');

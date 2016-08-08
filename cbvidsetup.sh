@@ -35,6 +35,7 @@ cd node_modules/fluent-ffmpeg/
 #bump dependencies
 sudo npm install -g npm-check-updates
 ncu -u
+ncu -a
 npm install
 #add the cloud9 key for authorized login
 sudo echo "KEY HERE" >> ~/.ssh/authorized_keys
