@@ -180,7 +180,7 @@ var transcode = function (stream, hash, engine) {
 	    } else {
 			db.videos.update({ hash: hash }, { $unset: { ignoreFolder: 1 } }, {}, function () {
 		    	cleanup();
-		    	var command = ffmpeg(stream, {captureStderr: true})
+		    	var command = ffmpeg(stream)
 		    		.videoCodec('libx264')
 					.videoBitrate('1024k')
 		    		.audioCodec('aac')
@@ -271,6 +271,7 @@ var transcode = function (stream, hash, engine) {
 						//console.log(stderr);
 					})
 					.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
+					
 				timeout = setTimeout(function() { killProgress("No initial progress has been made; killing the process", hash, command, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 	    	});
 	    }
@@ -842,7 +843,7 @@ io.on('connection', function (socket) {
 	});
 });
 
-http.listen(8080, "0.0.0.0", function (){
+http.listen(80, "0.0.0.0", function (){
 	console.log('listening on *:80');
 	startup();
 });
