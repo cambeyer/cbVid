@@ -192,7 +192,7 @@ var transcode = function (stream, hash, engine) {
 					.outputOption('-probesize 2147483647')
 					.outputOption('-pix_fmt yuv420p') //base command to here
 					.addOptions([
-						'-vbsf dump_extra',
+						'-vbsf dump_extra', //required for windows for some reason
 						'-sn',
 						'-async 1',
 						'-ar 44100',
