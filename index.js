@@ -269,8 +269,8 @@ var transcode = function (stream, hash, engine) {
 					.on('error', function (err, stdout, stderr) {
 						console.log("Transcoding issue: " + err);
 						//console.log(stderr);
-					})
-					.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
+					});
+				command.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 					
 				timeout = setTimeout(function() { killProgress("No initial progress has been made; killing the process", hash, command, engine); }, NO_PROGRESS_INITIAL_TIMEOUT * 1000);
 	    	});
@@ -843,7 +843,7 @@ io.on('connection', function (socket) {
 	});
 });
 
-http.listen(process.env.PORT || 80, "0.0.0.0", function (){
-	console.log('listening on *:80');
+http.listen(process.env.PORT, "0.0.0.0", function (){
+	console.log('listening on *:' + process.env.PORT);
 	startup();
 });
