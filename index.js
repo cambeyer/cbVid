@@ -192,6 +192,7 @@ var transcode = function (stream, hash, engine) {
 					.outputOption('-probesize 2147483647')
 					.outputOption('-pix_fmt yuv420p') //base command to here
 					.addOptions([
+						'-vbsf dump_extra',
 						'-sn',
 						'-async 1',
 						'-ar 44100',
@@ -268,7 +269,7 @@ var transcode = function (stream, hash, engine) {
 					})
 					.on('error', function (err, stdout, stderr) {
 						console.log("Transcoding issue: " + err);
-						//console.log(stderr);
+						console.log(stderr);
 					});
 				command.save(dir + hash + "/" + hash + SEQUENCE_SEPARATOR + "%05d" + TS_EXT);
 					
