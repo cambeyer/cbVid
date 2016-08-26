@@ -843,7 +843,7 @@ io.on('connection', function (socket) {
 	});
 });
 
-http.listen(80, "0.0.0.0", function (){
+http.listen(process.env.PORT || 80, "0.0.0.0", function (){
 	console.log('listening on *:80');
 	startup();
 });
