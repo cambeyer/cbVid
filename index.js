@@ -182,7 +182,7 @@ var transcode = function (stream, hash, engine) {
 		    	cleanup();
 		    	var command = ffmpeg(stream)
 		    		.videoCodec('libx264')
-					.videoBitrate('1024k')
+					.videoBitrate('4096k')
 		    		.audioCodec('aac')
 		    		.audioBitrate('128k')
 		    		.size('?x720')
@@ -196,7 +196,6 @@ var transcode = function (stream, hash, engine) {
 						'-sn',
 						'-async 1',
 						'-ar 44100',
-						'-pix_fmt yuv420p',
 						'-profile:v baseline',
 						'-preset:v superfast', //ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, very slow
 						'-x264opts level=3.0',
