@@ -44,6 +44,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	};
 	$rootScope.searchLoading = false;
 	
+	$rootScope.ERR_MESSAGE = "Sorry! Looks like we aren't able to stream that video.";
+	
 	$rootScope.activeVideo;
 	$rootScope.player;
 	$rootScope.playerReady = false;
@@ -62,6 +64,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.setTitle(torrent.title);
 		$state.transitionTo("cbvid.list", { hash: torrent.hash }, { notify: false, reload: false });
 		$rootScope.setVideo();
+	};
+	
+	$rootScope.playBad = function() {
+		alert($rootScope.ERR_MESSAGE);
 	};
 	
 	$rootScope.videoString = function (videoFile) {
@@ -220,7 +226,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 				if (statusUpdate.remaining) {
 					extraTime = $rootScope.player.currentTime() ? $rootScope.player.currentTime() : 0;
 				} else if (statusUpdate.terminated) {
-					alert("Sorry! Looks like we aren't able to stream that video.");
+					alert($rootScope.ERR_MESSAGE);
 				}
 				if (extraTime) {
 					$rootScope.activeVideo.remaining += extraTime;
