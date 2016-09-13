@@ -15,39 +15,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
-//var tp = require('torrent-project-api');
-var tpb = require('tpb');
-tpb.ENDPOINT = "http://thepiratebay.org"; //default endpoint in TPB doesn't exist anymore
-
-//Need the following function in tpb/index.js for parsing the HTML
-/*
-function parse(html) {
-  var torrents = [];
-  var $ = jquery(html);
-  var $rows = $('#searchResult tr:not([class*="header"])');
-  debug('found %d torrent rows', $rows.length);
-  $rows.each(function () {
-    var $row = $(this);
-    var $cells = $row.find('td');
-    var $data = $cells.eq(1);
-    var $link = $data.find('.detLink');
-    var $magnet = $data.find('a').eq(1);
-
-    var title = $link.text();
-    debug('parsing %s', title);
-    var $seeders = $cells.eq(2);
-
-    var torrent = {};
-    torrent.title = title;
-    torrent.magnet = $magnet.attr('href');
-    torrent.hash = torrent.magnet.split("btih:")[1].split("&")[0];
-    torrent.seeds = +$seeders.text().trim();
-    torrents.push(torrent);
-  });
-
-  return torrents;
-}
-*/
+var tapi = require('torrentapi-wrapper');
 
 var DB_EXT = '.db';
 
@@ -655,47 +623,46 @@ var addTorrentStatus = function(list, callback) {
 };
 
 var processStatus = function(list, pos, callback) {
-	//tp.magnet(list[pos].magnet, function (err, magnet) {
-		//list[pos].magnet = magnet;
-		db.videos.findOne({ hash: list[pos].hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
-			if (!err && vidEntry) {
-				var title = String(list[pos].title);
-				var magnet = String(list[pos].magnet);
-				list[pos] = vidEntry;
-				list[pos].title = title;
-				list[pos].magnet = magnet;
-				delete vidEntry.users;
-			}
-			callback();
-		});
-	//});
+	db.videos.findOne({ hash: list[pos].hash }, { createdAt: 0, updatedAt: 0, _id: 0 }, function(err, vidEntry) {
+		if (!err && vidEntry) {
+			var title = String(list[pos].title);
+			var magnet = String(list[pos].magnet);
+			list[pos] = vidEntry;
+			list[pos].title = title;
+			list[pos].magnet = magnet;
+			delete vidEntry.users;
+		}
+		callback();
+	});
 };
 
 var fetchTorrentList = function(query, socket) {
 	var final = [];
-	//tp.search(query, { limit: 100, order: 'best' }, function(err, results) {
-	(new tpb(query)).query(function(err, results) {
-		if (!err) {
-			//if (results && results.torrents && results.torrents.length > 0) {
-			if (results && results.length > 0) {
-				//for (var i = 0; i < results.torrents.length; i++) {
-				for (var i = 0; i < results.length; i++) {
-					//if (results.torrents[i].seeds > 5) {
-					if (results[i].seeds > 5) {
-						//final.push({title: results.torrents[i].title.replace(/\&amp;/g,'&'), magnet: results.torrents[i], hash: results.torrents[i].hash.toLowerCase()});
-						final.push({title: results[i].title.replace(/\&amp;/g,'&'), magnet: results[i].magnet, hash: results[i].hash.toLowerCase()});
-					}
-				}
-				console.log("Fetched some results from TorrentProject");
-			} else {
-				console.log("No results fetched from TorrentProject");
+	tapi.search('cbvid', {
+		query: query,
+		limit: 100,
+		category: '1;14;48;17;44;45;42;18;41',
+		sort: 'seeders'
+	}).then(function (results) {
+		if (results && results.length > 0) {
+			for (var i = 0; i < results.length; i++) {
+				final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
 			}
+			console.log("Fetched some results from TorrentAPI");
+			sendResults(socket, final);
 		} else {
-			console.log("Error while fetching TorrentProject results: "+ err);
+			console.log("No results fetched from TorrentAPI");
+			sendResults(socket, final);
 		}
-		addTorrentStatus(final, function() {
-			socket.emit('listtorrent', final);
-		});
+	}).catch(function (err) {
+		console.log("Error while fetching TorrentAPI results: " + err);
+		sendResults(socket, final);
+	});
+};
+
+var sendResults = function(socket, final) {
+	addTorrentStatus(final, function() {
+		socket.emit('listtorrent', final);
 	});
 };
 
