@@ -641,7 +641,8 @@ var fetchTorrentList = function(query, socket) {
 	tapi.search('cbvid', {
 		query: query,
 		limit: 100,
-		category: '1;14;48;17;44;45;42;18;41',
+		category: '14;48;17;44;45;47;42;46;18;41',
+		min_seeders: 1,
 		sort: 'seeders'
 	}).then(function (results) {
 		if (results && results.length > 0) {
