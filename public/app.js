@@ -66,6 +66,13 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 		$rootScope.setVideo();
 	};
 	
+	$rootScope.manualMagnet = function() {
+		var magnet = prompt("Custom magnet:");
+		if (magnet) {
+			$rootScope.playTorrent({ magnet: magnet, hash: magnet.split("btih:")[1].split("&")[0], title: "[Loading]" });
+		}
+	};
+	
 	$rootScope.playBad = function() {
 		alert($rootScope.ERR_MESSAGE);
 	};
