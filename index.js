@@ -16,6 +16,7 @@ var nedb = require('nedb');
 var jsrp = require('jsrp');
 var atob = require('atob');
 var tapi = require('torrentapi-wrapper');
+var rimraf = require('rimraf');
 
 var DB_EXT = '.db';
 
@@ -66,7 +67,7 @@ db.videos.ensureIndex({ fieldName: 'updatedAt', expireAfterSeconds: DAYS_RETENTI
 
 var startup = function() {
 	db.users.update({ }, { $set: { keys: [] } }, { multi: true }, function () { //remove to let users remain logged in across server restarts... then we have to broadcast deletes below
-		deleteFolderRecursive(__dirname + "/torrent-stream");
+		deleteFolder(__dirname + "/torrent-stream");
 		cleanup(true);
 	});
 };
@@ -108,23 +109,12 @@ var cleanup = function(startup) {
 	});
 };
 
-var deleteFolderRecursive = function(path) {
-	if (fs.existsSync(path)) {
-		fs.readdirSync(path).forEach(function(file, index) {
-			var curPath = path + "/" + file;
-			if(fs.lstatSync(curPath).isDirectory()) {
-				deleteFolderRecursive(curPath);
-			} else {
-				fs.unlinkSync(curPath);
-			}
-		});
-		try {
-			fs.rmdirSync(path);
-		} catch (e) {
-			console.log("Error removing folder, trying again.");
-			deleteFolderRecursive(path);
+var deleteFolder = function(path) {
+	rimraf(path, function(err) {
+		if (err) {
+			console.log('Error removing ' + path + ': ', error);
 		}
-	}
+	});
 };
 
 //if there's a folder for a video but it's not in the database
@@ -134,11 +124,11 @@ var checkRemove = function(hash, startup) {
 		if (!err && videos.length == 0) {
 			try {
 				console.log("Removing " + dir + hash + " because it is not in the videos database");
-				deleteFolderRecursive(dir + hash);
+				deleteFolder(dir + hash);
 			} catch (e) { }
 		} else if (startup && videos.length == 1 && videos[0].torrenting) {
 				console.log("Removing " + dir + hash + " because it was not finished");
-				deleteFolderRecursive(dir + hash);
+				deleteFolder(dir + hash);
 		}
 	});
 };
@@ -263,7 +253,7 @@ var killProgress = function(message, hash, command, engine) {
 				delete updatedDocs.users;
 				io.emit('status', updatedDocs);
 			}
-			deleteFolderRecursive(dir + hash);
+			deleteFolder(dir + hash);
 		});
 		for (var uniqueIdentifier in needingResponse[hash]) {
 			needingResponse[hash][uniqueIdentifier].end();
