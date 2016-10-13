@@ -110,7 +110,7 @@ var cleanup = function(startup) {
 };
 
 var deleteFolder = function(path) {
-	rimraf(path, function(err) {
+	rimraf.sync(path, function(err) {
 		if (err) {
 			console.log('Error removing ' + path + ': ', error);
 		}
