@@ -118,7 +118,12 @@ var deleteFolderRecursive = function(path) {
 				fs.unlinkSync(curPath);
 			}
 		});
-		fs.rmdirSync(path);
+		try {
+			fs.rmdirSync(path);
+		} catch (e) {
+			console.log("Error removing folder, trying again.");
+			deleteFolderRecursive(path);
+		}
 	}
 };
 
