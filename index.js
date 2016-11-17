@@ -1,9 +1,11 @@
+var fs = require('fs');
+var gracefulFs = require('graceful-fs');
+gracefulFs.gracefulify(fs);
 var express = require('express');
 var app = express();
 var busboy = require('connect-busboy');
 var path = require('path');
 var readLine = require('readline');
-var fs = require('fs-extra');
 var http = require('http').Server(app);
 var send = require('send');
 var io = require('socket.io')(http);
@@ -110,11 +112,11 @@ var cleanup = function(startup) {
 };
 
 var deleteFolder = function(path) {
-	rimraf.sync(path, function(err) {
-		if (err) {
-			console.log('Error removing ' + path + ': ', error);
-		}
-	});
+	try {
+		rimraf.sync(path);
+	} catch (e) {
+		console.log("Error removing " + path);
+	}
 };
 
 //if there's a folder for a video but it's not in the database
