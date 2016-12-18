@@ -45,3 +45,9 @@ sudo echo "KEY HERE" >> ~/.ssh/authorized_keys
 sudo apt-get install libcap2-bin
 #allow nodejs to bind to port 80
 sudo setcap cap_net_bind_service=+ep /usr/local/bin/node
+#install letsencrypt certbot
+cd ~/
+wget https://dl.eff.org/certbot-auto
+chmod a+x certbot-auto
+#replace cbvid.com with the actual domain this server corresponds to
+./certbot-auto certonly --webroot -w ~/cbVid/public -d cbvid.com

@@ -6,7 +6,10 @@ var app = express();
 var busboy = require('connect-busboy');
 var path = require('path');
 var readLine = require('readline');
-var http = require('http').Server(app);
+var http = require('https').Server({
+   key  : fs.readFileSync('/etc/letsencrypt/live/cbvid.com/privkey.pem'),
+   cert : fs.readFileSync('/etc/letsencrypt/live/cbvid.com/fullchain.pem')
+}, app);
 var send = require('send');
 var io = require('socket.io')(http);
 var parseTorrent = require('parse-torrent');
