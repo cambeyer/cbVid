@@ -51,3 +51,5 @@ wget https://dl.eff.org/certbot-auto
 chmod a+x certbot-auto
 #replace cbvid.com with the actual domain this server corresponds to
 ./certbot-auto certonly --webroot -w ~/cbVid/public -d cbvid.com
+#upgrades the certs
+./certbot-auto renew --quiet --no-self-upgrade
