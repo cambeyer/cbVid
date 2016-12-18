@@ -1,3 +1,5 @@
+var DOMAIN_NAME = "cbvid.com";
+
 var fs = require('fs');
 var gracefulFs = require('graceful-fs');
 gracefulFs.gracefulify(fs);
@@ -6,12 +8,11 @@ var app = express();
 var busboy = require('connect-busboy');
 var path = require('path');
 var readLine = require('readline');
-var createServer = require("auto-sni");
-var http = createServer({
+var http = require("auto-sni")({
     email: "cam.beyer@gmail.com",
     agreeTos: true,
     debug: false,
-    domains: ["cbvid.com"],
+    domains: [DOMAIN_NAME],
     forceSSL: true,
     redirectCode: 301,
     ports: {
