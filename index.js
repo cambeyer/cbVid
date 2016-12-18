@@ -6,9 +6,18 @@ var app = express();
 var busboy = require('connect-busboy');
 var path = require('path');
 var readLine = require('readline');
-var http = require('https').Server({
-   key  : fs.readFileSync('/etc/letsencrypt/live/cbvid.com/privkey.pem'),
-   cert : fs.readFileSync('/etc/letsencrypt/live/cbvid.com/fullchain.pem')
+var createServer = require("auto-sni");
+var http = createServer({
+    email: "cam.beyer@gmail.com",
+    agreeTos: true,
+    debug: false,
+    domains: ["cbvid.com"],
+    forceSSL: true,
+    redirectCode: 301,
+    ports: {
+        http: 80,
+        https: 443
+    }
 }, app);
 var send = require('send');
 var io = require('socket.io')(http);
@@ -811,7 +820,7 @@ io.on('connection', function (socket) {
 	});
 });
 
-http.listen(process.env.PORT, "0.0.0.0", function (){
-	console.log('listening on *:' + process.env.PORT);
+http.once("listening", ()=> {
+	console.log('listening on *:' + http.address().port);
 	startup();
 });
