@@ -1,4 +1,5 @@
-var DOMAIN_NAME = "cbvid.com";
+//PORT=80 /usr/local/bin/node index
+var DOMAIN_NAME = "cambeyer.com";
 
 var fs = require('fs');
 var gracefulFs = require('graceful-fs');
@@ -13,7 +14,7 @@ var http = require("auto-sni")({
     agreeTos: true,
     debug: false,
     domains: [DOMAIN_NAME],
-    forceSSL: true,
+    forceSSL: false,
     redirectCode: 301,
     ports: {
         http: 80,
