@@ -15,7 +15,7 @@ var http = require("auto-sni")({
     debug: false,
     domains: [DOMAIN_NAME],
     forceSSL: false,
-    redirectCode: 301,
+    //redirectCode: 301,
     ports: {
         http: 80,
         https: 443
