@@ -7,7 +7,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confd
 sudo apt-get install build-essential libssl-dev git
 #add nvm package to install node/npm
 #change the version number according to https://github.com/creationix/nvm/releases
-curl https://raw.githubusercontent.com/creationix/nvm/v0.30.2/install.sh | bash
+curl https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash
 #add nvm to the PATH
 source ~/.profile
 #install the latest stable node
@@ -53,3 +53,4 @@ chmod a+x certbot-auto
 ./certbot-auto certonly --webroot -w ~/cbVid/public -d cbvid.com
 #upgrades the certs
 ./certbot-auto renew --quiet --no-self-upgrade
+#if windows, install openssl https://slproweb.com/download/Win64OpenSSL-1_0_2j.exe

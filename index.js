@@ -1,5 +1,5 @@
 //PORT=80 /usr/local/bin/node index
-var DOMAIN_NAME = "cambeyer.com";
+var DOMAIN_NAME = "cbvid.com";
 
 var fs = require('fs');
 var gracefulFs = require('graceful-fs');
@@ -43,6 +43,8 @@ var NO_PROGRESS_INITIAL_TIMEOUT = 60; //seconds
 var NO_PROGRESS_RECURRING_TIMEOUT = 60 * 60; //seconds
 var MAX_MAGNET_RETRIES = 3;
 var MAGNET_RETRY_DELAY = 500; //milliseconds
+var MAX_SEARCH_RETRIES = 3;
+var SEARCH_RETRY_DELAY = 2000; // milliseconds
 var DB_UPDATE_FREQUENCY = 5; //seconds
 var DAYS_RETENTION_PERIOD = 20; //days
 var INITIAL_REMAINING_ESTIMATE = 86400; //seconds
@@ -647,29 +649,36 @@ var processStatus = function(list, pos, callback) {
 	});
 };
 
-var fetchTorrentList = function(query, socket) {
+var fetchTorrentList = function(query, socket, num) {
 	var final = [];
-	tapi.search('cbvid', {
-		query: query,
-		limit: 100,
-		category: '14;48;17;44;45;47;42;46;18;41',
-		min_seeders: 1,
-		sort: 'seeders'
-	}).then(function (results) {
-		if (results && results.length > 0) {
-			for (var i = 0; i < results.length; i++) {
-				final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
+	if (!num || num < MAX_SEARCH_RETRIES) {
+		tapi.search('cbvid', {
+			query: query,
+			limit: 100,
+			category: '14;48;17;44;45;47;42;46;18;41',
+			min_seeders: 1,
+			sort: 'seeders'
+		}).then(function (results) {
+			if (results && results.length > 0) {
+				for (var i = 0; i < results.length; i++) {
+					final.push({title: results[i].title, magnet: results[i].download, hash: getHash(results[i].download) });
+				}
+				console.log("Fetched some results from TorrentAPI");
+				sendResults(socket, final);
+			} else {
+				console.log("No results fetched from TorrentAPI");
+				sendResults(socket, final);
 			}
-			console.log("Fetched some results from TorrentAPI");
-			sendResults(socket, final);
-		} else {
-			console.log("No results fetched from TorrentAPI");
-			sendResults(socket, final);
-		}
-	}).catch(function (err) {
-		console.log("Error while fetching TorrentAPI results: " + err);
+		}).catch(function (err) {
+			console.log("Error while fetching TorrentAPI results: " + err);
+			setTimeout(function() {
+				fetchTorrentList(query, socket, num ? num + 1 : 1);
+			}, SEARCH_RETRY_DELAY);
+		});
+	} else {
+		console.log("Maximum retries exceeded; cannot fetch search results");
 		sendResults(socket, final);
-	});
+	}
 };
 
 var sendResults = function(socket, final) {
