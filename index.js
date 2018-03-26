@@ -187,7 +187,7 @@ var transcode = function (stream, hash, engine) {
 						'-map 0:a:0',
 						'-f segment',
 						'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
-						'-segment_time 10',
+						'-segment_time 5',
 						'-segment_format mpegts',
 						'-segment_list_flags live'
 					])

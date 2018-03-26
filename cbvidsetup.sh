@@ -4,13 +4,14 @@ sudo apt-get update
 #upgrade any packages that are out of date, keeping existing files and accepting all defaults
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 #add dependencies for nvm and install git
-sudo apt-get install build-essential libssl-dev git
+sudo apt-get install build-essential libssl-dev git python
 #add nvm package to install node/npm
 #change the version number according to https://github.com/creationix/nvm/releases
-curl https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash
+curl https://raw.githubusercontent.com/creationix/nvm/v0.33.6/install.sh | bash
 #add nvm to the PATH
 source ~/.profile
 #install the latest stable node
+#6.2.2
 nvm install stable
 #copy the version of node to the global folder
 n=$(which node);n=${n%/bin/node}; chmod -R 755 $n/bin/*; sudo cp -r $n/{bin,lib,share} /usr/local
