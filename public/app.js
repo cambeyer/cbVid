@@ -80,7 +80,7 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	$rootScope.videoString = function (videoFile) {
 		if ($rootScope.$storage.username && $rootScope.$storage.sessionNumber) {
 			/*global btoa*/
-			return "./" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt(videoFile)) + "/stream.m3u8";
+			return window.location.protocol + "//" + window.location.hostname + (window.location.port ? ":" + window.location.port: "") + "/" + $rootScope.$storage.username + "/" + $rootScope.$storage.sessionNumber + "/" + btoa(EncryptService.encrypt(videoFile)) + "/stream.m3u8";
 		}
 	};
 
@@ -92,10 +92,8 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 			}
 			/*global videojs*/
 			videojs("video", {
-				plugins: {
-					chromecast: {
-						appId: "cbVid"
-					}
+				chromecast: {
+					//appId: "cbVid"
 				}
 			}, function(){
 				$rootScope.playerLoading = false;

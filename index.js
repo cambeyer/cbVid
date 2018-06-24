@@ -184,7 +184,7 @@ var transcode = function (stream, hash, engine) {
 						'-flags +global_header',
 						//'-map 0',
 						'-map 0:v:0',
-						'-map 0:a:0',
+						'-map 0:a:0?',
 						'-f segment',
 						'-segment_list ' + dir + hash + "/stream" + M3U8_EXT,
 						'-segment_time 5',
@@ -657,7 +657,8 @@ var fetchTorrentList = function(query, socket, num) {
 			limit: 100,
 			category: '14;48;17;44;45;47;42;46;18;41',
 			min_seeders: 1,
-			sort: 'seeders'
+			sort: 'seeders',
+			verified: false
 		}).then(function (results) {
 			if (results && results.length > 0) {
 				for (var i = 0; i < results.length; i++) {

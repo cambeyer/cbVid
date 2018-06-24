@@ -7,7 +7,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confd
 sudo apt-get install build-essential libssl-dev git python
 #add nvm package to install node/npm
 #change the version number according to https://github.com/creationix/nvm/releases
-curl https://raw.githubusercontent.com/creationix/nvm/v0.33.6/install.sh | bash
+curl https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh | bash
 #add nvm to the PATH
 source ~/.profile
 #install the latest stable node

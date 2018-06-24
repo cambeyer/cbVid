@@ -70,6 +70,10 @@ html, body {
     height: auto;
 }
 
+.vjs-chromecast-button {
+    font-size: unset !important;
+}
+
 #video {
     line-height: 0;
 }
