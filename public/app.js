@@ -298,6 +298,10 @@ angular.module('cbVidApp', ['ngAnimate', 'ui.router', 'ngStorage', 'ui.bootstrap
 	if ($rootScope.$storage.username) {
 		$('#password').focus();
 	}
+	
+	$scope.alert = function(arg){
+	    alert(arg);
+	}
 
 	$scope.login = function () {
 		if ($rootScope.$storage.username && $rootScope.credentials.password) {

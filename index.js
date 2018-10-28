@@ -319,8 +319,16 @@ function withModifiedPlaylist(readStream, eachLine, done) {
 	var rl = readLine.createInterface({terminal: false, input: readStream});
 	var foundPlaylistType = false;
 	rl.on('line', function (line) {
-		if (line.match('^#EXT-X-PLAYLIST-TYPE:')) foundPlaylistType = true;
+		if (line.match('^#EXT-X-VERSION:')) {
+			eachLine('#EXT-X-VERSION:6');
+			return;
+		}
+		if (line.match('^#EXT-X-PLAYLIST-TYPE:')) {
+			eachLine('#EXT-X-START:TIME-OFFSET=0,PRECISE=YES');
+			foundPlaylistType = true;
+		}
 		else if (line.match('^#EXTINF:') && !foundPlaylistType) {
+			eachLine('#EXT-X-START:TIME-OFFSET=0,PRECISE=YES');
 			eachLine('#EXT-X-PLAYLIST-TYPE:EVENT');
 			foundPlaylistType = true;
 		}
